@@ -55,8 +55,10 @@ def LocalMO(MOs='u'):
             idx = indices[i]
             rS[idx][idx].append([ 0, 0, 0, 1.])
             if (MOs == 'u'):  # unoccupied FMOs
+                rH0[idx][idx].append([ 0, 0, 0, moe[ihomo+i]])  # using energy of core units
                 rH[idx][idx].append([ 0, 0, 0, moe[ihomo+i]])  # using energy of core units
             else:  # occupied FMOs
+                rH0[idx][idx].append([ 0, 0, 0, moe[ihomo+i-input.CoreMON]])  # using energy of core units
                 rH[idx][idx].append([ 0, 0, 0, moe[ihomo+i-input.CoreMON]])  # using energy of core units
         if (MOs == 'u'):  # unoccupied FMOs
             #CoreMOe.append(moe[ihomo:ihomo+input.CoreMON])
@@ -78,8 +80,10 @@ def LocalMO(MOs='u'):
             idx = indices[i]
             rS[idx][idx].append([ 0, 0, 0, 1.])
             if (MOs == 'u'):  # unoccupied FMOs
+                rH0[idx][idx].append([ 0, 0, 0, moe[ihomo+i]])  # using energy of link units
                 rH[idx][idx].append([ 0, 0, 0, moe[ihomo+i]])  # using energy of link units
             else:  # occupied FMOs
+                rH0[idx][idx].append([ 0, 0, 0, moe[ihomo+i-input.LinkMON]])  # using energy of link units
                 rH[idx][idx].append([ 0, 0, 0, moe[ihomo+i-input.LinkMON]])  # using energy of link units
         if (MOs == 'u'):  # unoccupied FMOs
             #LinkMOe.append(moe[ihomo:ihomo+input.LinkMON])

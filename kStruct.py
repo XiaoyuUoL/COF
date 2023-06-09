@@ -127,16 +127,19 @@ def kBand(kHighSymm, kNum, rH, rS=None):
         exit()
 
     kPoints = []
-    for i in np.arange(len(kHighSymm) - 1):
-        for j in np.arange(kNum):
-            kPoints.append(kHighSymm[i] + j / kNum * (kHighSymm[i + 1] - kHighSymm[i]))
-    kPoints.append(kHighSymm[-1])
-    kl = np.zeros(len(kPoints))
-    for i in np.arange(len(kPoints) - 1):
-        kl[i + 1] = kDist(kPoints[i + 1], kPoints[i]) + kl[i]
+    kl = []
+    for i in np.arange(len(kHighSymm)):
+        for j in np.arange(kNum + 1):
+            kPoints.append(kHighSymm[i, 0] + j / kNum * (kHighSymm[i, 1] - kHighSymm[i, 0]))
+            if (i == 0 and j == 0):
+                kl.append(0.0)
+            elif (j == 0):
+                kl.append(kl[-1])
+            else:
+                kl.append(kDist(kPoints[-1], kPoints[-2]) + kl[-1])
 
-    if (os.path.isfile('bands.dat')):
-        os.system('rm bands.dat')
+    if (os.path.isfile('{}/bands.dat'.format(input.WorkDir))):
+        os.system('rm {}/bands.dat'.format(input.WorkDir))
 
     emin = None
     emax = None
@@ -167,9 +170,22 @@ def kBand(kHighSymm, kNum, rH, rS=None):
         os.system('rm band-{}.dat'.format(i))
 
     fout = open('{}/highsymm.dat'.format(input.WorkDir), 'w')
+    klHS = []
     for i in np.arange(len(kHighSymm)):
         de = emax - emin
-        fout.writelines('{:14.7f}{:14.7f}\n'.format(kl[i * kNum], emin - 0.05 * de))
-        fout.writelines('{:14.7f}{:14.7f}\n'.format(kl[i * kNum], emax + 0.05 * de))
+        klHS.append(kl[i * (kNum + 1)])
+        fout.writelines('{:14.7f}{:14.7f}\n'.format(klHS[-1], emin - 0.05 * de))
+        fout.writelines('{:14.7f}{:14.7f}\n'.format(klHS[-1], emax + 0.05 * de))
         fout.writelines('\n')
+    de = emax - emin
+    klHS.append(kl[-1])
+    fout.writelines('{:14.7f}{:14.7f}\n'.format(klHS[-1], emin - 0.05 * de))
+    fout.writelines('{:14.7f}{:14.7f}\n'.format(klHS[-1], emax + 0.05 * de))
+    fout.writelines('\n')
+
+    fout.writelines('#')
+    for k in klHS:
+        fout.writelines('{:14.7f}'.format(k))
+    fout.writelines('\n')
+
     fout.close()

@@ -1,13 +1,36 @@
 import numpy as np
+import os
 
 ## Work folder
 WorkDir = '1/Fragment0'
 
 ## crystal parameter
 # real space lattice vector
-rV = np.array([[38.9482440969893489, 0.0118690278767904, -0.2128707946153858],
-               [-0.0498951423867981, 33.1187748841537868, 0.0384065281382595],
-               [-0.3440320652054656, -0.0399050908279700, 8.9554762976636670]], dtype=float) 
+if (os.path.isfile('CONTCAR')):
+    fin = open('CONTCAR')
+    fin.readline()
+    scale = float(fin.readline())
+    rV = np.zeros((3, 3), dtype=float)
+    for i in np.arange(3):
+        data = fin.readline().rstrip().split()
+        rV[i, :] = np.array(data, dtype=float)
+    rV *= scale
+    fin.close()
+elif (os.path.isfile('POSCAR')):
+    fin = open('POSCAR')
+    fin.readline()
+    scale = float(fin.readline())
+    rV = np.zeros((3, 3), dtype=float)
+    for i in np.arange(3):
+        data = fin.readline().rstrip().split()
+        rV[i, :] = np.array(data, dtype=float)
+    rV *= scale
+    fin.close()
+else:
+    rV = np.array([[38.9482440969893489, 0.0118690278767904, -0.2128707946153858],
+                   [-0.0498951423867981, 33.1187748841537868, 0.0384065281382595],
+                   [-0.3440320652054656, -0.0399050908279700, 8.9554762976636670]], dtype=float)
+
 # k-space lattice vector
 kV = np.zeros((3, 3), dtype=float)
 kV[0, :] = 2. * np.pi / np.dot(rV[0, :], np.cross(rV[1, :], rV[2, :])) * np.cross(rV[1, :], rV[2, :])
@@ -143,14 +166,34 @@ kDoSNum = 15  # sampling of k-space
 sigma = 0.01  # brodening (eV)
 
 # parameters for band structure calculation
-kBandNum = 100  # sampling of k-path
-kHighSymm = np.array([[0.0, 0.0, 0.0],
-                      [0.5, 0.0, 0.0],
-                      [0.5, 0.5, 0.0],
-                      [0.0, 0.5, 0.0],
-                      [0.0, 0.0, 0.0],
-                      [0.0, 0.0, 0.5],
-                      [0.5, 0.0, 0.5],
-                      [0.5, 0.5, 0.5],
-                      [0.0, 0.5, 0.5],
-                      [0.0, 0.0, 0.5]])  # high symmetry points
+if (os.path.isfile('KPOINTS')):
+    fin = open('KPOINTS')
+    fin.readline()
+    kBandNum = int(fin.readline())
+    fin.readline()
+    fin.readline()
+    kHighSymm = []
+    line = fin.readline()
+    while (len(line) != 0):
+        data = line.rstrip().split()
+        if (data != ['']):
+            kBegin = np.array(data[:3], dtype=float)
+            kEnd = np.array(fin.readline().rstrip().split()[:3], dtype=float)
+            fin.readline()
+        else:
+            break
+        line = fin.readline()
+        kHighSymm.append([kBegin, kEnd])
+    fin.close()
+    kHighSymm = np.array(kHighSymm)
+else:
+    kBandNum = 100  # sampling of k-path
+    kHighSymm = np.array([[[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]],
+                          [[0.5, 0.0, 0.0], [0.5, 0.5, 0.0]],
+                          [[0.5, 0.5, 0.0], [0.0, 0.5, 0.0]],
+                          [[0.0, 0.5, 0.0], [0.0, 0.0, 0.0]],
+                          [[0.0, 0.0, 0.0], [0.0, 0.0, 0.5]],
+                          [[0.0, 0.0, 0.5], [0.5, 0.0, 0.5]],
+                          [[0.5, 0.0, 0.5], [0.5, 0.5, 0.5]],
+                          [[0.5, 0.5, 0.5], [0.0, 0.5, 0.5]],
+                          [[0.0, 0.5, 0.5], [0.0, 0.0, 0.5]]], dtype=float)  # high symmetry points

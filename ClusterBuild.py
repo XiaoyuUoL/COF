@@ -69,7 +69,7 @@ def GJFWrite(GJFFile, Name, Coord):
     fout.writelines('formchk {}.chk\n'.format(GJFFile))
     fout.close()
 
-    os.system('echo "sbatch {}/{}.sh" >> {}/submit.sh'.format(input.WorkDir, GJFFile, input.WorkDir))
+    os.system('echo "sbatch {}.sh" >> {}/submit.sh'.format(GJFFile, input.WorkDir))
 
 # read xyz information for cores and links
 CoreName = []
@@ -108,7 +108,7 @@ for i in np.arange(input.CoreNum):
             continue
         nameH[j] = 'H'
         name.append(nameH[j])
-        BondVect = LinkCoord[j][connect[1]] + np.dot(input.rV, pbc) - coord[connect[0]]
+        BondVect = LinkCoord[j][connect[1]] + np.dot(input.rV.T, pbc) - coord[connect[0]]
         XHL = input.XHLength[LinkName[j][connect[1]].lower()]
         coordH[j] = coord[connect[0]] + XHL / np.sqrt(np.sum(BondVect * BondVect)) * BondVect
         coord = np.append(coord, [coordH[j]], axis=0)
@@ -137,7 +137,7 @@ for i in np.arange(input.LinkNum):
             continue
         nameH[j] = 'H'
         name.append(nameH[j])
-        BondVect = CoreCoord[j][connect[0]] - coord[connect[1]] - np.dot(input.rV, pbc)
+        BondVect = CoreCoord[j][connect[0]] - coord[connect[1]] - np.dot(input.rV.T, pbc)
         XHL = input.XHLength[CoreName[j][connect[0]].lower()]
         coordH[j] = coord[connect[1]] + XHL / np.sqrt(np.sum(BondVect * BondVect)) * BondVect
         coord = np.append(coord, [coordH[j]], axis=0)
@@ -159,7 +159,7 @@ for i,indices in enumerate(input.ClusterIdx):
         if (index[0] == 'c'):
             NCL[0] += 1
             name += CoreName[index[1]]
-            dxyz = np.dot(input.rV, index[2:])
+            dxyz = np.dot(input.rV.T, index[2:])
             coord += list(CoreCoord[index[1]] + dxyz)
             nh = CoreNH[index[1]]
             mark = [True] * input.LinkNum
@@ -177,7 +177,7 @@ for i,indices in enumerate(input.ClusterIdx):
         else:
             NCL[1] += 1
             name += LinkName[index[1]]
-            dxyz = np.dot(input.rV, index[2:])
+            dxyz = np.dot(input.rV.T, index[2:])
             coord += list(LinkCoord[index[1]] + dxyz)
             mark = [True] * input.CoreNum
             nh = LinkNH[index[1]]
