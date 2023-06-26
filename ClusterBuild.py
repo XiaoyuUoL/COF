@@ -71,6 +71,53 @@ def GJFWrite(GJFFile, Name, Coord):
 
     os.system('echo "sbatch {}.sh" >> {}/submit.sh'.format(GJFFile, input.WorkDir))
 
+# build cluster based on cluster index
+def ClusterBuild(ClusterIdx):
+    name = []
+    coord = []
+    NCL = [0, 0]
+    NH = []
+    for index in ClusterIdx:
+        if (index[0] == 'c'):
+            NCL[0] += 1
+            name += CoreName[index[1]]
+            dxyz = np.dot(input.rV.T, index[2:])
+            coord += list(CoreCoord[index[1]] + dxyz)
+            nh = input.CoreNH[index[1]]
+            mark = [True] * input.LinkNum
+            for indexp in ClusterIdx:
+                if (indexp[0] == 'l'):
+                    pbc0 = list(input.PBC[index[1], indexp[1]])
+                    pbc1 = list(np.array(indexp[2:]) - np.array(index[2:]))
+                    if (pbc0 == pbc1):
+                        mark[indexp[1]] = False
+            for i in np.arange(input.LinkNum):
+                if (mark[i] and CoreNameH[index[1]][i] != ''):
+                    name += CoreNameH[index[1]][i]
+                    coord.append(CoreCoordH[index[1]][i] + dxyz)
+                    nh -= 1
+        else:
+            NCL[1] += 1
+            name += LinkName[index[1]]
+            dxyz = np.dot(input.rV.T, index[2:])
+            coord += list(LinkCoord[index[1]] + dxyz)
+            mark = [True] * input.CoreNum
+            nh = input.LinkNH[index[1]]
+            for indexp in ClusterIdx:
+                if (indexp[0] == 'c'):
+                    pbc0 = list(input.PBC[indexp[1], index[1]])
+                    pbc1 = list(np.array(index[2:]) - np.array(indexp[2:]))
+                    if (pbc0 == pbc1):
+                        mark[indexp[1]] = False
+            for i in np.arange(input.CoreNum):
+                if (mark[i] and LinkNameH[index[1]][i] != ''):
+                    name += LinkNameH[index[1]][i]
+                    coord.append(LinkCoordH[index[1]][i] + dxyz)
+                    nh -= 1
+        NH.append(nh)
+    
+    return name, np.array(coord, dtype=float), NCL, NH
+
 # read xyz information for cores and links
 CoreName = []
 CoreCoord = []
@@ -92,7 +139,7 @@ if (os.path.isfile('{}/submit.sh'.format(input.WorkDir))):
 # write xyz information for cores(-H) and links-(H)
 CoreNameH = []
 CoreCoordH = []
-CoreNH = []
+input.CoreNH = []
 for i in np.arange(input.CoreNum):
     name = CoreName[i][:]
     coord = CoreCoord[i][:]
@@ -117,11 +164,11 @@ for i in np.arange(input.CoreNum):
     GJFWrite('c{}-H'.format(i), name, coord)
     CoreNameH.append(nameH)
     CoreCoordH.append(coordH)
-    CoreNH.append(nh)
+    input.CoreNH.append(nh)
 
 LinkNameH = []
 LinkCoordH = []
-LinkNH = []
+input.LinkNH = []
 for i in np.arange(input.LinkNum):
     name = LinkName[i][:]
     coord = LinkCoord[i][:]
@@ -146,58 +193,37 @@ for i in np.arange(input.LinkNum):
     GJFWrite('l{}-H'.format(i), name, coord)
     LinkNameH.append(nameH)
     LinkCoordH.append(coordH)
-    LinkNH.append(nh)
+    input.LinkNH.append(nh)
+
+# write xyz information for cores(-links) and links(-cores)
+for i in np.arange(input.CoreNum):
+    ClusterIdx = [['c', i, 0, 0, 0]]
+    for j in np.arange(input.LinkNum):
+        if (input.Connect[i, j, 0] != -1):
+            ClusterIdx.append(['l', j] + list(input.PBC[i, j]))
+    name,coord,NCL,NH = ClusterBuild(ClusterIdx)
+    XYZWrite('c{}-l'.format(i), name, coord)
+    GJFWrite('c{}-l'.format(i), name, coord)
+
+for i in np.arange(input.LinkNum):
+    ClusterIdx = [['l', i, 0, 0, 0]]
+    for j in np.arange(input.CoreNum):
+        if (input.Connect[j, i, 1] != -1):
+            ClusterIdx.append(['c', j] + list(-input.PBC[j, i]))
+    name,coord,NCL,NH = ClusterBuild(ClusterIdx)
+    XYZWrite('l{}-c'.format(i), name, coord)
+    GJFWrite('l{}-c'.format(i), name, coord)
 
 # write xyz information for clusters
-NHs = []
 for i,indices in enumerate(input.ClusterIdx):
-    name = []
-    coord = []
-    NCL = [0, 0]
-    NH = []
-    for index in indices:
-        if (index[0] == 'c'):
-            NCL[0] += 1
-            name += CoreName[index[1]]
-            dxyz = np.dot(input.rV.T, index[2:])
-            coord += list(CoreCoord[index[1]] + dxyz)
-            nh = CoreNH[index[1]]
-            mark = [True] * input.LinkNum
-            for indexp in indices:
-                if (indexp[0] == 'l'):
-                    pbc0 = list(input.PBC[index[1], indexp[1]])
-                    pbc1 = list(np.array(indexp[2:]) - np.array(index[2:]))
-                    if (pbc0 == pbc1):
-                        mark[indexp[1]] = False
-            for j in np.arange(input.LinkNum):
-                if (mark[j] and CoreNameH[index[1]][j] != ''):
-                    name += CoreNameH[index[1]][j]
-                    coord.append(CoreCoordH[index[1]][j] + dxyz)
-                    nh -= 1
-        else:
-            NCL[1] += 1
-            name += LinkName[index[1]]
-            dxyz = np.dot(input.rV.T, index[2:])
-            coord += list(LinkCoord[index[1]] + dxyz)
-            mark = [True] * input.CoreNum
-            nh = LinkNH[index[1]]
-            for indexp in indices:
-                if (indexp[0] == 'c'):
-                    pbc0 = list(input.PBC[indexp[1], index[1]])
-                    pbc1 = list(np.array(index[2:]) - np.array(indexp[2:]))
-                    if (pbc0 == pbc1):
-                        mark[indexp[1]] = False
-            for j in np.arange(input.CoreNum):
-                if (mark[j] and LinkNameH[index[1]][j] != ''):
-                    name += LinkNameH[index[1]][j]
-                    coord.append(LinkCoordH[index[1]][j] + dxyz)
-                    nh -= 1
-        NH.append(nh)
-    XYZWrite('cluster{}-H'.format(i), name, np.array(coord))
-    GJFWrite('cluster{}-H'.format(i), name, np.array(coord))
+    name,coord,NCL,NH = ClusterBuild(indices)
+    XYZWrite('cluster{}-H'.format(i), name, coord)
+    GJFWrite('cluster{}-H'.format(i), name, coord)
     input.ClusterNCL.append(NCL)
     input.ClusterNH.append(NH)
 #print(input.ClusterNCL)
+#print(input.CoreNH)
+#print(input.LinkNH)
 #print(input.ClusterNH)
 #print()
 

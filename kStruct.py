@@ -190,40 +190,40 @@ def kBand(kHighSymm, kNum, rH, rS=None):
 
     fout.close()
 
-# use th k path in references for band structure calculation
-# 1. Y. Hinuma et al. Computational Materials Science, 2017, 128, 140-184. (vaspkit)
-# 2. W. Setyawan, S. Curtarolo, Computational Materials Science, 2010, 49, 299–312.
-def kPath(lattice=None):
-    # check lattice type based on lattice vector, i.e., only primitive cells
-    if (lattice == None):
-    # specify lattice type
-    else:
-        # cubic primitive
-        if (lattice.lower() == 'cp' or lattice.lower() == 'cub'):
-        # cubic face
-        elif (lattice.lower() == 'cf' or lattice.lower() == 'fcc'):
-        # cubic body
-        elif (lattice.lower() == 'ci' or lattice.lower() == 'bcc'):
-        # tetragonal primitive
-        elif (lattice.lower() == 'tp' or lattice.lower() == 'tet'):
-        # tetragonal body
-        elif (lattice.lower() == 'ti'):
-            if (rV[2, 2] < rV[0, 0]):
-            else:
-        # orthorhombic primitive
-        elif (lattice.lower() == 'op'):
-        # orthorhombic face
-        elif (lattice.lower() == 'of'):
-            if (rV[0][0] ** (-2) > rV[1][1] ** (-2) + rV[2][2] ** (-2)):
-            elif (rV[0][0] ** (-2) > rV[1][1] ** (-2) + rV[2][2] ** (-2)):
-            else:
-        # cubic face
-        elif (lattice.lower() == 'cf'):
-        # cubic face
-        elif (lattice.lower() == 'cf'):
-        # cubic face
-        elif (lattice.lower() == 'cf'):
-        # cubic face
-        elif (lattice.lower() == 'cf'):
-        # cubic face
-        elif (lattice.lower() == 'cf'):
+## use th k path in references for band structure calculation
+## 1. Y. Hinuma et al. Computational Materials Science, 2017, 128, 140-184. (vaspkit)
+## 2. W. Setyawan, S. Curtarolo, Computational Materials Science, 2010, 49, 299–312.
+#def kPath(lattice=None):
+#    # check lattice type based on lattice vector, i.e., only primitive cells
+#    if (lattice == None):
+#    # specify lattice type
+#    else:
+#        # cubic primitive
+#        if (lattice.lower() == 'cp' or lattice.lower() == 'cub'):
+#        # cubic face
+#        elif (lattice.lower() == 'cf' or lattice.lower() == 'fcc'):
+#        # cubic body
+#        elif (lattice.lower() == 'ci' or lattice.lower() == 'bcc'):
+#        # tetragonal primitive
+#        elif (lattice.lower() == 'tp' or lattice.lower() == 'tet'):
+#        # tetragonal body
+#        elif (lattice.lower() == 'ti'):
+#            if (rV[2, 2] < rV[0, 0]):
+#            else:
+#        # orthorhombic primitive
+#        elif (lattice.lower() == 'op'):
+#        # orthorhombic face
+#        elif (lattice.lower() == 'of'):
+#            if (rV[0][0] ** (-2) > rV[1][1] ** (-2) + rV[2][2] ** (-2)):
+#            elif (rV[0][0] ** (-2) > rV[1][1] ** (-2) + rV[2][2] ** (-2)):
+#            else:
+#        # cubic face
+#        elif (lattice.lower() == 'cf'):
+#        # cubic face
+#        elif (lattice.lower() == 'cf'):
+#        # cubic face
+#        elif (lattice.lower() == 'cf'):
+#        # cubic face
+#        elif (lattice.lower() == 'cf'):
+#        # cubic face
+#        elif (lattice.lower() == 'cf'):

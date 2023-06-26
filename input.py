@@ -2,12 +2,12 @@ import numpy as np
 import os
 
 ## Work folder
-WorkDir = 'COF-701/Fragment1'
+WorkDir = 'COF-701/Fragment0'
 
 ## crystal parameter
 # real space lattice vector
-if (os.path.isfile('CONTCAR')):
-    fin = open('CONTCAR')
+if (os.path.isfile('{}/CONTCAR'.format(WorkDir))):
+    fin = open('{}/CONTCAR'.format(WorkDir))
     fin.readline()
     scale = float(fin.readline())
     rV = np.zeros((3, 3), dtype=float)
@@ -16,8 +16,8 @@ if (os.path.isfile('CONTCAR')):
         rV[i, :] = np.array(data, dtype=float)
     rV *= scale
     fin.close()
-elif (os.path.isfile('POSCAR')):
-    fin = open('POSCAR')
+elif (os.path.isfile('{}/POSCAR'.format(WorkDir))):
+    fin = open('{}/POSCAR'.format(WorkDir))
     fin.readline()
     scale = float(fin.readline())
     rV = np.zeros((3, 3), dtype=float)
@@ -27,31 +27,25 @@ elif (os.path.isfile('POSCAR')):
     rV *= scale
     fin.close()
 else:
-    rV = np.array([[ 30.0705509185999986, 0.0000000000000000, 0.0000000000000000],
-                   [-14.7504731939999996, 26.0116246147000005, 0.0000000000000000],
-                   [-2.5083044823999998, -3.8658725720999998, 5.5791483006000000]], dtype=float)
+    rV = np.array([[ 30.0705509186,  0.0000000000, 0.0000000000],
+                   [-14.7504731940, 26.0116246147, 0.0000000000],
+                   [ -2.5083044824, -3.8658725721, 5.5791483006]], dtype=float)
 
 # k-space lattice vector
 kV = np.zeros((3, 3), dtype=float)
-kV[0, :] = 2. * np.pi / np.dot(rV[0, :], np.cross(rV[1, :], rV[2, :])) * np.cross(rV[1, :], rV[2, :])
-kV[1, :] = 2. * np.pi / np.dot(rV[1, :], np.cross(rV[2, :], rV[0, :])) * np.cross(rV[2, :], rV[0, :])
-kV[2, :] = 2. * np.pi / np.dot(rV[2, :], np.cross(rV[0, :], rV[1, :])) * np.cross(rV[0, :], rV[1, :])
+V = np.dot(rV[0, :], np.cross(rV[1, :], rV[2, :]))
+kV[0, :] = np.cross(rV[1, :], rV[2, :]) / V
+kV[1, :] = np.cross(rV[2, :], rV[0, :]) / V
+kV[2, :] = np.cross(rV[0, :], rV[1, :]) / V
+kV *= 2. * np.pi
 
 ## decomposition of COF into cores and links (in unit cell)
 # number of cores and links in unit cell
 CoreNum = 4
 LinkNum = 6
 
-# connect points (atoms) between core and link (consider there are only connects between core and link)
-# if there is no connect between Core i and Link j, connect[i][j] = [-1, -1]
-#Connect = np.array([[[1, 8], [15, 19], [30, 8], [16, 19], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
-#                   [[29, 20], [2, 8], [28, 19], [3, 8], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
-#                   [[-1, -1], [-1, -1], [-1, -1], [-1, -1], [1, 18], [16, 8], [29, 18], [15, 8]],  
-#                   [[-1, -1], [-1, -1], [-1, -1], [-1, -1], [2, 8], [12, 18], [3, 8], [13, 18]]], dtype=int)
-#Connect = np.array([[[5, 8], [54, 8], [70, 7], [59, 8], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
-#                   [[41, 9], [14, 7], [40, 8], [15, 7], [-1, -1], [-1, -1], [-1, -1], [-1, -1]],
-#                   [[-1, -1], [-1, -1], [-1, -1], [-1, -1], [7, 15], [59, 14], [70, 15], [55, 14]],
-#                   [[-1, -1], [-1, -1], [-1, -1], [-1, -1], [14, 14], [36, 15], [15, 14], [37, 15]]], dtype=int)
+# connect points (atoms) between core and link
+# (consider there are only connects between core and link)
 Connect = np.full((CoreNum, LinkNum, 2), -1, dtype=int)
 # Fragment0
 if (WorkDir[-1] == '0'):
@@ -82,23 +76,29 @@ else:
     Connect[3, 4] = [2, 13]
     Connect[3, 5] = [0, 13]
 
-#PBC = np.array([[[0, 0, 0], [-1, 0, 0], [-1, -1, 0], [0, -1, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
-#                [[0, 0, 0], [ 0, 0, 0], [ 0,  0, 0], [0,  0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]],
-#                [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [-1, 0, 0], [-1, -1, 0], [0, -1, 0]],
-#                [[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0], [ 0, 0, 0], [ 0,  0, 0], [0,  0, 0]]], dtype=int)
 PBC =  np.zeros((CoreNum, LinkNum, 3), dtype=int)
 PBC[0, 1] = [-1,  0,  0]
 PBC[0, 2] = [-1, -1,  0]
 PBC[2, 4] = [-1, -1,  0]
 PBC[2, 5] = [ 0, -1,  0]
 
+# number of H atoms in core/link
+CoreNH = []
+LinkNH = []
+
 # indices of clusters [core or link, fragment index, a index, b index, c index]
-ClusterIdx = [[['c', 0, 0, 0, 0], ['l', 0, 0, 0, 0], ['l', 1, -1,  0, 0], ['l', 2, -1, -1, 0]],
-              [['c', 1, 0, 0, 0], ['l', 0, 0, 0, 0], ['l', 1,  0,  0, 0], ['l', 2,  0,  0, 0]],
-              [['c', 2, 0, 0, 0], ['l', 3, 0, 0, 0], ['l', 4, -1, -1, 0], ['l', 5,  0, -1, 0]],
-              [['c', 3, 0, 0, 0], ['l', 3, 0, 0, 0], ['l', 4,  0,  0, 0], ['l', 5,  0,  0, 0]],
-              [['c', 0, 0, 0, 0], ['c', 2, 0, 0, -1]],
-              [['c', 0, 0, 0, 0], ['c', 2, 0, 0,  0]],]
+ClusterIdx = []
+# consider all connected core-link dimer
+for i in np.arange(CoreNum):
+    CoreIdx = ['c', i, 0, 0, 0]
+    for j in np.arange(LinkNum):
+        if (Connect[i, j, 0] != -1):
+            LinkIdx = ['l', j] + list(PBC[i, j])
+            ClusterIdx.append([CoreIdx, LinkIdx])
+
+# Other pairs need to be considered
+ClusterIdx.append([['c', 0, 0, 0, 0], ['c', 2, 0, 0, -1]])
+ClusterIdx.append([['c', 0, 0, 0, 0], ['c', 2, 0, 0,  0]])
 
 # number of cores/links in each cluster
 ClusterNCL = []
@@ -125,8 +125,8 @@ SBATCH = {'N': '{:d}'.format(1),
 HAON = 2
 
 # local FMOs for k-space calculation
-MOMode = 'a'  # 'u' for CBM, 'o' for VBM and 'a' for all
-CoreMON = 2  # number of FMOs of cores
+MOMode = 'u'  # 'u' for CBM, 'o' for VBM and 'a' for all
+CoreMON = 3  # number of FMOs of cores
 LinkMON = 1  # number of FMOs of links
 if (MOMode == 'u' or MOMode == 'o'):
     CoreTMON = CoreMON * CoreNum
@@ -161,9 +161,10 @@ kDoSNum = 15  # sampling of k-space
 sigma = 0.01  # brodening (eV)
 
 # parameters for band structure calculation
-if (os.path.isfile('KPOINTS')):
-    fin = open('KPOINTS')
+if (os.path.isfile('{}/KPOINTS'.format(WorkDir))):
+    fin = open('{}/KPOINTS'.format(WorkDir))
     fin.readline()
+    # sampling of k-path
     kBandNum = int(fin.readline())
     fin.readline()
     fin.readline()
@@ -180,13 +181,14 @@ if (os.path.isfile('KPOINTS')):
         line = fin.readline()
         kHighSymm.append([kBegin, kEnd])
     fin.close()
+    # high symmetry points
     kHighSymm = np.array(kHighSymm)
 else:
-    kBandNum = 100  # sampling of k-path
+    kBandNum = 100
     kHighSymm = np.array([[[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]],
                           [[0.0, 0.5, 0.0], [0.0, 0.0, 0.0]],
                           [[0.0, 0.0, 0.0], [0.0, 0.0, 0.5]],
                           [[0.5, 0.5, 0.5], [0.0, 0.0, 0.0]],
                           [[0.0, 0.0, 0.0], [0.0, 0.5, 0.5]],
                           [[0.5, 0.0, 0.5], [0.0, 0.0, 0.0]],
-                          [[0.0, 0.0, 0.0], [0.5, 0.5, 0.0]]], dtype=float)  # high symmetry points
+                          [[0.0, 0.0, 0.0], [0.5, 0.5, 0.0]]], dtype=float)
