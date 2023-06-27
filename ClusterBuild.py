@@ -1,4 +1,4 @@
-## create g16 input files of cores/links and clusters and corresponding submission files
+## create g16 input files of cores/links/clusters and corresponding submission
 import numpy as np
 import os
 
@@ -30,7 +30,7 @@ def XYZWrite(XYZFile, Name, Coord):
     fout.writelines('{}\n'.format(XYZFile))
     for i in np.arange(AtomNumber):
         fout.writelines('{}{:14.7f}{:14.7f}{:14.7f}\n'.format(
-                        Name[i], Coord[i, 0], Coord[i, 1], Coord[i, 2]))
+            Name[i], Coord[i, 0], Coord[i, 1], Coord[i, 2]))
     fout.close()
 
 def GJFWrite(GJFFile, Name, Coord):
@@ -51,7 +51,7 @@ def GJFWrite(GJFFile, Name, Coord):
     fout.writelines('0 1\n')
     for i in np.arange(AtomNumber):
         fout.writelines('{}{:14.7f}{:14.7f}{:14.7f}\n'.format(
-                        Name[i], Coord[i, 0], Coord[i, 1], Coord[i, 2]))
+            Name[i], Coord[i, 0], Coord[i, 1], Coord[i, 2]))
     fout.writelines('\n')
     fout.writelines('\n')
     fout.close()
@@ -69,7 +69,8 @@ def GJFWrite(GJFFile, Name, Coord):
     fout.writelines('formchk {}.chk\n'.format(GJFFile))
     fout.close()
 
-    os.system('echo "sbatch {}.sh" >> {}/submit.sh'.format(GJFFile, input.WorkDir))
+    os.system('echo "sbatch {}.sh" >> {}/submit.sh'.format(
+        GJFFile, input.WorkDir))
 
 # build cluster based on cluster index
 def ClusterBuild(ClusterIdx):
@@ -115,8 +116,9 @@ def ClusterBuild(ClusterIdx):
                     coord.append(LinkCoordH[index[1]][i] + dxyz)
                     nh -= 1
         NH.append(nh)
-    
-    return name, np.array(coord, dtype=float), NCL, NH
+    coord = np.array(coord, dtype=float)
+
+    return name, coord, NCL, NH
 
 # read xyz information for cores and links
 CoreName = []
@@ -146,18 +148,20 @@ for i in np.arange(input.CoreNum):
     nameH = [''] * input.LinkNum
     coordH = [0] * input.LinkNum
     nh = 0
+    # add H based on connection info
     for j in np.arange(input.LinkNum):
         connect = input.Connect[i, j]
-        pbc = input.PBC[i, j]
+        PBC = np.dot(input.rV.T, input.PBC[i, j])
         if (connect[0] == -1):
             nameH[j] = ''
             coordH[j] = []
             continue
         nameH[j] = 'H'
         name.append(nameH[j])
-        BondVect = LinkCoord[j][connect[1]] + np.dot(input.rV.T, pbc) - coord[connect[0]]
+        BondVect = LinkCoord[j][connect[1]] + PBC - coord[connect[0]]
+        BondLength = np.sqrt(np.sum(BondVect * BondVect))
         XHL = input.XHLength[LinkName[j][connect[1]].lower()]
-        coordH[j] = coord[connect[0]] + XHL / np.sqrt(np.sum(BondVect * BondVect)) * BondVect
+        coordH[j] = coord[connect[0]] + XHL / BondLength * BondVect
         coord = np.append(coord, [coordH[j]], axis=0)
         nh += 1
     XYZWrite('c{}-H'.format(i), name, coord)
@@ -175,18 +179,20 @@ for i in np.arange(input.LinkNum):
     nameH = [''] * input.CoreNum
     coordH = [0] * input.CoreNum
     nh = 0
+    # add H based on connection info
     for j in np.arange(input.CoreNum):
         connect = input.Connect[j, i]
-        pbc = input.PBC[j, i]
+        PBC = np.dot(input.rV.T, input.PBC[j, i])
         if (connect[0] == -1):
             nameH[j] = ''
             coordH[j] = []
             continue
         nameH[j] = 'H'
         name.append(nameH[j])
-        BondVect = CoreCoord[j][connect[0]] - coord[connect[1]] - np.dot(input.rV.T, pbc)
+        BondVect = CoreCoord[j][connect[0]] - coord[connect[1]] - PBC
+        BondLength = np.sqrt(np.sum(BondVect * BondVect))
         XHL = input.XHLength[CoreName[j][connect[0]].lower()]
-        coordH[j] = coord[connect[1]] + XHL / np.sqrt(np.sum(BondVect * BondVect)) * BondVect
+        coordH[j] = coord[connect[1]] + XHL / BondLength * BondVect
         coord = np.append(coord, [coordH[j]], axis=0)
         nh += 1
     XYZWrite('l{}-H'.format(i), name, coord)
