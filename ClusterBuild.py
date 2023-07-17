@@ -74,6 +74,14 @@ def GJFWrite(GJFFile, Name, Coord):
 
 # build cluster based on cluster index
 def ClusterBuild(ClusterIdx):
+    IdxCore = []
+    IdxLink = []
+    for index in ClusterIdx:
+        if (index[0] == 'c'):
+            IdxCore.append(index[1:])
+        else:
+            IdxLink.append(index[1:])
+
     name = []
     coord = []
     NCL = [0, 0]
@@ -81,41 +89,50 @@ def ClusterBuild(ClusterIdx):
     for index in ClusterIdx:
         if (index[0] == 'c'):
             NCL[0] += 1
-            name += CoreName[index[1]]
-            dxyz = np.dot(input.rV.T, index[2:])
-            coord += list(CoreCoord[index[1]] + dxyz)
-            nh = input.CoreNH[index[1]]
-            mark = [True] * input.LinkNum
-            for indexp in ClusterIdx:
-                if (indexp[0] == 'l'):
-                    pbc0 = list(input.PBC[index[1], indexp[1]])
-                    pbc1 = list(np.array(indexp[2:]) - np.array(index[2:]))
-                    if (pbc0 == pbc1):
-                        mark[indexp[1]] = False
-            for i in np.arange(input.LinkNum):
-                if (mark[i] and CoreNameH[index[1]][i] != ''):
-                    name += CoreNameH[index[1]][i]
-                    coord.append(CoreCoordH[index[1]][i] + dxyz)
-                    nh -= 1
+            ic = index[1]
+            pbcc = index[2:]
+            name += CoreName[ic]
+            dxyz = np.dot(input.rV.T, pbcc)
+            coord += list(CoreCoord[ic] + dxyz)
+            nh = 0
+            for il in np.arange(input.LinkNum):
+                for connect,pbc in zip(input.Connect[ic][il],input.PBC[ic][il]):
+                    pbcl = list(np.array(pbcc) + np.array(pbc))
+                    if ([il] + pbcl not in IdxLink):
+                        nh += 1
+                        name += 'H'
+                        coordc = CoreCoord[ic][connect[0]]
+                        dxyzl = np.dot(input.rV.T, pbc)
+                        coordl = LinkCoord[il][connect[1]] + dxyzl
+                        BondVect = coordl - coordc
+                        BondLength = np.sqrt(np.sum(BondVect * BondVect))
+                        XHL = input.XHLength[LinkName[il][connect[1]].lower()]
+                        coordH = coordc + XHL / BondLength * BondVect + dxyz
+                        coord += [list(coordH)]
         else:
             NCL[1] += 1
-            name += LinkName[index[1]]
-            dxyz = np.dot(input.rV.T, index[2:])
-            coord += list(LinkCoord[index[1]] + dxyz)
-            mark = [True] * input.CoreNum
-            nh = input.LinkNH[index[1]]
-            for indexp in ClusterIdx:
-                if (indexp[0] == 'c'):
-                    pbc0 = list(input.PBC[indexp[1], index[1]])
-                    pbc1 = list(np.array(index[2:]) - np.array(indexp[2:]))
-                    if (pbc0 == pbc1):
-                        mark[indexp[1]] = False
-            for i in np.arange(input.CoreNum):
-                if (mark[i] and LinkNameH[index[1]][i] != ''):
-                    name += LinkNameH[index[1]][i]
-                    coord.append(LinkCoordH[index[1]][i] + dxyz)
-                    nh -= 1
+            il = index[1]
+            pbcl = index[2:]
+            name += LinkName[il]
+            dxyz = np.dot(input.rV.T, pbcl)
+            coord += list(LinkCoord[il] + dxyz)
+            nh =0
+            for ic in np.arange(input.CoreNum):
+                for connect,pbc in zip(input.Connect[ic][il],input.PBC[ic][il]):
+                    pbcc = list(np.array(pbcl) - np.array(pbc))
+                    if ([ic] + pbcc not in IdxCore):
+                        nh += 1
+                        name += 'H'
+                        dxyzc = np.dot(input.rV.T, pbc)
+                        coordc = CoreCoord[ic][connect[0]] - dxyzc
+                        coordl = LinkCoord[il][connect[1]]
+                        BondVect = coordc - coordl
+                        BondLength = np.sqrt(np.sum(BondVect * BondVect))
+                        XHL = input.XHLength[CoreName[ic][connect[0]].lower()]
+                        coordH = coordl + XHL / BondLength * BondVect + dxyz
+                        coord += [list(coordH)]
         NH.append(nh)
+
     coord = np.array(coord, dtype=float)
 
     return name, coord, NCL, NH
@@ -139,74 +156,24 @@ if (os.path.isfile('{}/submit.sh'.format(input.WorkDir))):
     os.system('rm {}/submit.sh'.format(input.WorkDir))
 
 # write xyz information for cores(-H) and links-(H)
-CoreNameH = []
-CoreCoordH = []
-input.CoreNH = []
 for i in np.arange(input.CoreNum):
-    name = CoreName[i][:]
-    coord = CoreCoord[i][:]
-    nameH = [''] * input.LinkNum
-    coordH = [0] * input.LinkNum
-    nh = 0
-    # add H based on connection info
-    for j in np.arange(input.LinkNum):
-        connect = input.Connect[i, j]
-        PBC = np.dot(input.rV.T, input.PBC[i, j])
-        if (connect[0] == -1):
-            nameH[j] = ''
-            coordH[j] = []
-            continue
-        nameH[j] = 'H'
-        name.append(nameH[j])
-        BondVect = LinkCoord[j][connect[1]] + PBC - coord[connect[0]]
-        BondLength = np.sqrt(np.sum(BondVect * BondVect))
-        XHL = input.XHLength[LinkName[j][connect[1]].lower()]
-        coordH[j] = coord[connect[0]] + XHL / BondLength * BondVect
-        coord = np.append(coord, [coordH[j]], axis=0)
-        nh += 1
+    CoreIdx = [['c', i, 0, 0, 0]]
+    name,coord,NCL,NH = ClusterBuild(CoreIdx)
     XYZWrite('c{}-H'.format(i), name, coord)
     GJFWrite('c{}-H'.format(i), name, coord)
-    CoreNameH.append(nameH)
-    CoreCoordH.append(coordH)
-    input.CoreNH.append(nh)
 
-LinkNameH = []
-LinkCoordH = []
-input.LinkNH = []
 for i in np.arange(input.LinkNum):
-    name = LinkName[i][:]
-    coord = LinkCoord[i][:]
-    nameH = [''] * input.CoreNum
-    coordH = [0] * input.CoreNum
-    nh = 0
-    # add H based on connection info
-    for j in np.arange(input.CoreNum):
-        connect = input.Connect[j, i]
-        PBC = np.dot(input.rV.T, input.PBC[j, i])
-        if (connect[0] == -1):
-            nameH[j] = ''
-            coordH[j] = []
-            continue
-        nameH[j] = 'H'
-        name.append(nameH[j])
-        BondVect = CoreCoord[j][connect[0]] - coord[connect[1]] - PBC
-        BondLength = np.sqrt(np.sum(BondVect * BondVect))
-        XHL = input.XHLength[CoreName[j][connect[0]].lower()]
-        coordH[j] = coord[connect[1]] + XHL / BondLength * BondVect
-        coord = np.append(coord, [coordH[j]], axis=0)
-        nh += 1
+    LinkIdx = [['l', i, 0, 0, 0]]
+    name,coord,NCL,NH = ClusterBuild(LinkIdx)
     XYZWrite('l{}-H'.format(i), name, coord)
     GJFWrite('l{}-H'.format(i), name, coord)
-    LinkNameH.append(nameH)
-    LinkCoordH.append(coordH)
-    input.LinkNH.append(nh)
 
 # write xyz information for cores(-links) and links(-cores)
 for i in np.arange(input.CoreNum):
     ClusterIdx = [['c', i, 0, 0, 0]]
     for j in np.arange(input.LinkNum):
-        if (input.Connect[i, j, 0] != -1):
-            ClusterIdx.append(['l', j] + list(input.PBC[i, j]))
+        for pbc in input.PBC[i][j]:
+            ClusterIdx.append(['l', j] + pbc)
     name,coord,NCL,NH = ClusterBuild(ClusterIdx)
     XYZWrite('c{}-l'.format(i), name, coord)
     GJFWrite('c{}-l'.format(i), name, coord)
@@ -214,8 +181,8 @@ for i in np.arange(input.CoreNum):
 for i in np.arange(input.LinkNum):
     ClusterIdx = [['l', i, 0, 0, 0]]
     for j in np.arange(input.CoreNum):
-        if (input.Connect[j, i, 1] != -1):
-            ClusterIdx.append(['c', j] + list(-input.PBC[j, i]))
+        for pbc in input.PBC[j][i]:
+            ClusterIdx.append(['c', j] + list(-np.array(pbc)))
     name,coord,NCL,NH = ClusterBuild(ClusterIdx)
     XYZWrite('l{}-c'.format(i), name, coord)
     GJFWrite('l{}-c'.format(i), name, coord)
@@ -228,8 +195,6 @@ for i,indices in enumerate(input.ClusterIdx):
     input.ClusterNCL.append(NCL)
     input.ClusterNH.append(NH)
 #print(input.ClusterNCL)
-#print(input.CoreNH)
-#print(input.LinkNH)
 #print(input.ClusterNH)
 #print()
 

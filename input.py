@@ -46,55 +46,70 @@ LinkNum = 8
 
 # connect points (atoms) between core and link
 # (consider there are only connects between core and link)
-Connect = np.full((CoreNum, LinkNum, 2), -1, dtype=int)
+Connect = []
+for i in np.arange(CoreNum):
+    connect = []
+    for j in np.arange(LinkNum):
+        connect.append([])
+    Connect.append(connect)
+
 # Fragment0
 if (WorkDir[-1] == '0'):
-    Connect[0, 0] = [1, 8]
-    Connect[0, 1] = [15, 19]
-    Connect[0, 2] = [30, 8]
-    Connect[0, 3] = [16, 19]
-    Connect[1, 0] = [29, 20]
-    Connect[1, 1] = [2, 8]
-    Connect[1, 2] = [28, 19]
-    Connect[1, 3] = [3, 8]
-    Connect[2, 4] = [1, 18]
-    Connect[2, 5] = [16, 8]
-    Connect[2, 6] = [29, 18]
-    Connect[2, 7] = [15, 8]
-    Connect[3, 4] = [2, 8]
-    Connect[3, 5] = [12, 18]
-    Connect[3, 6] = [3, 8]
-    Connect[3, 7] = [13, 18]
+    Connect[0][0].append([1, 8])
+    Connect[0][1].append([15, 19])
+    Connect[0][2].append([30, 8])
+    Connect[0][3].append([16, 19])
+    Connect[1][0].append([29, 20])
+    Connect[1][1].append([2, 8])
+    Connect[1][2].append([28, 19])
+    Connect[1][3].append([3, 8])
+    Connect[2][4].append([1, 18])
+    Connect[2][5].append([16, 8])
+    Connect[2][6].append([29, 18])
+    Connect[2][7].append([15, 8])
+    Connect[3][4].append([2, 8])
+    Connect[3][5].append([12, 18])
+    Connect[3][6].append([3, 8])
+    Connect[3][7].append([13, 18])
 # Fragment1
 else:
-    Connect[0, 0] = [5, 8]
-    Connect[0, 1] = [54, 8]
-    Connect[0, 2] = [70, 7]
-    Connect[0, 3] = [59, 8]
-    Connect[1, 0] = [41, 9]
-    Connect[1, 1] = [14, 7]
-    Connect[1, 2] = [40, 8]
-    Connect[1, 3] = [15, 7]
-    Connect[2, 4] = [7, 15]
-    Connect[2, 5] = [59, 14]
-    Connect[2, 6] = [70, 15]
-    Connect[2, 7] = [55, 14]
-    Connect[3, 4] = [14, 14]
-    Connect[3, 5] = [36, 15]
-    Connect[3, 6] = [15, 14]
-    Connect[3, 7] = [37, 15]
+    Connect[0][0].append([5, 8])
+    Connect[0][1].append([54, 8])
+    Connect[0][2].append([70, 7])
+    Connect[0][3].append([59, 8])
+    Connect[1][0].append([41, 9])
+    Connect[1][1].append([14, 7])
+    Connect[1][2].append([40, 8])
+    Connect[1][3].append([15, 7])
+    Connect[2][4].append([7, 15])
+    Connect[2][5].append([59, 14])
+    Connect[2][6].append([70, 15])
+    Connect[2][7].append([55, 14])
+    Connect[3][4].append([14, 14])
+    Connect[3][5].append([36, 15])
+    Connect[3][6].append([15, 14])
+    Connect[3][7].append([37, 15])
 
-PBC =  np.zeros((CoreNum, LinkNum, 3), dtype=int)
-PBC[0, 1] = [-1,  0,  0]
-PBC[0, 2] = [-1, -1,  0]
-PBC[0, 3] = [ 0, -1,  0]
-PBC[2, 5] = [-1,  0,  0]
-PBC[2, 6] = [-1, -1,  0]
-PBC[2, 7] = [ 0, -1,  0]
+PBC = []
+for i in np.arange(CoreNum):
+    pbc = []
+    for j in np.arange(LinkNum):
+        tmp = []
+        for connect in Connect[i][j]:
+            tmp.append([0, 0, 0])
+        pbc.append(tmp)
+    PBC.append(pbc)
+
+PBC[0][1][0] = [-1,  0,  0]
+PBC[0][2][0] = [-1, -1,  0]
+PBC[0][3][0] = [ 0, -1,  0]
+PBC[2][5][0] = [-1,  0,  0]
+PBC[2][6][0] = [-1, -1,  0]
+PBC[2][7][0] = [ 0, -1,  0]
 
 # number of H atoms in core/link
-CoreNH = []
-LinkNH = []
+CoreNH = [0] * CoreNum
+LinkNH = [0] * LinkNum
 
 # indices of clusters [core or link, fragment index, a index, b index, c index]
 ClusterIdx = []
@@ -102,9 +117,12 @@ ClusterIdx = []
 for i in np.arange(CoreNum):
     CoreIdx = ['c', i, 0, 0, 0]
     for j in np.arange(LinkNum):
-        if (Connect[i, j, 0] != -1):
-            LinkIdx = ['l', j] + list(PBC[i, j])
-            ClusterIdx.append([CoreIdx, LinkIdx])
+        if (PBC[i][j] != []):
+            for pbc in PBC[i][j]:
+                LinkIdx = ['l', j] + list(pbc)
+                ClusterIdx.append([CoreIdx, LinkIdx])
+                CoreNH[i] += 1
+                LinkNH[j] += 1
 
 # indices of clusters [core or link, fragment index, a index, b index, c index]
 ClusterIdx.append([['c', 0, 0, 0, 0], ['c', 2, 0, 0, -1]])
