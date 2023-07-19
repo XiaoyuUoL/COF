@@ -116,7 +116,7 @@ def ClusterBuild(ClusterIdx):
             name += LinkName[il]
             dxyz = np.dot(input.rV.T, pbcl)
             coord += list(LinkCoord[il] + dxyz)
-            nh =0
+            nh = 0
             for ic in np.arange(input.CoreNum):
                 for connect,pbc in zip(input.Connect[ic][il],input.PBC[ic][il]):
                     pbcc = list(np.array(pbcl) - np.array(pbc))

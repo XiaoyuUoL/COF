@@ -5,6 +5,7 @@ import os
 import input
 
 np.set_printoptions(precision=3, suppress=True)
+system = '{}_c{}_l{}'.format(input.MOMode, input.CoreMON, input.LinkMON)
 
 # solve M * C = S * C * e (return 'C' and 'e')
 def GeneralEigen(S, M):
@@ -26,7 +27,8 @@ def Gaussian(x, sigma, mu, weight):
     xNum = len(x)
     result = np.zeros(xNum, dtype = float)
     for i in np.arange(xNum):
-        result[i] = np.sum(weight * np.exp(-(mu - x[i]) ** 2 / (2. * sigma ** 2)))
+        dx = x[i] - mu
+        result[i] = np.sum(weight * np.exp(-0.5 * (dx / sigma) ** 2))
     result /=  sigma * np.sqrt(2 * np.pi)
 
     return result
@@ -117,8 +119,10 @@ def kDoS(kNum, rH, rS=None):
                 e = np.append(e, ke)
                 w = np.append(w, Project(kC), axis=1)
 
-    np.savetxt('{}/DoS.dat'.format(input.WorkDir), DoS(e, input.sigma, kNum ** 3))
-    np.savetxt('{}/pDoS.dat'.format(input.WorkDir), pDoS(e, w, input.sigma, kNum ** 3))
+    np.savetxt('{}/DoS_{}.dat'.format(input.WorkDir, system),
+        DoS(e, input.sigma, kNum ** 3))
+    np.savetxt('{}/pDoS_{}.dat'.format(input.WorkDir, system),
+        pDoS(e, w, input.sigma, kNum ** 3))
 
 # return band structure besed on High Symmetry points provided
 def kBand(kHighSymm, kNum, rH, rS=None):
@@ -129,8 +133,10 @@ def kBand(kHighSymm, kNum, rH, rS=None):
     kPoints = []
     kl = []
     for i in np.arange(len(kHighSymm)):
+        dk = kHighSymm[i, 1] - kHighSymm[i, 0]
         for j in np.arange(kNum + 1):
-            kPoints.append(kHighSymm[i, 0] + j / kNum * (kHighSymm[i, 1] - kHighSymm[i, 0]))
+            kpoint = kHighSymm[i, 0] + j / kNum * dk
+            kPoints.append(kpoint)
             if (i == 0 and j == 0):
                 kl.append(0.0)
             elif (j == 0):
@@ -159,17 +165,19 @@ def kBand(kHighSymm, kNum, rH, rS=None):
             emax = max(ke)
         w = Project(kC)
         for i in np.arange(input.TMON):
-            ResultStr = '{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}'.format(dk, kPoint[0], kPoint[1], kPoint[2], ke[i])
+            ResultStr = '{:14.7f}{:14.7f}{:14.7f}{:14.7f}{:14.7f}'.format(dk, 
+                kPoint[0], kPoint[1], kPoint[2], ke[i])
             for j in np.arange(len(w)):
                 ResultStr += '{:14.7f}'.format(w[j, i])
             fout[i].writelines('{}\n'.format(ResultStr))
     for i in np.arange(input.TMON):
         fout[i].writelines('\n')
         fout[i].close()
-        os.system('cat band-{}.dat >> {}/bands.dat'.format(i, input.WorkDir))
+        os.system('cat band-{}.dat >> {}/bands_{}.dat'.format(i,
+            input.WorkDir, system))
         os.system('rm band-{}.dat'.format(i))
 
-    fout = open('{}/highsymm.dat'.format(input.WorkDir), 'w')
+    fout = open('{}/highsymm_{}.dat'.format(input.WorkDir, system), 'w')
     klHS = []
     for i in np.arange(len(kHighSymm)):
         de = emax - emin

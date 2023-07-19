@@ -201,7 +201,6 @@ def LocalMO():
                     imo1 = imo0 + input.CoreMON * 2
                 LOrbMOC[iao0:iao1, imo0:imo1] = CoreMOC[index[1]][:aon, :]
                 imo.append(np.arange(ClusterMON)[imo0:imo1])
-                iao0 += aon0 - input.HAON * input.ClusterNH[i][j]
             else:
                 ano0 = np.shape(LinkMOC[index[1]])[0]
                 aon = ano0 - input.HAON * input.LinkNH[index[1]]
@@ -212,7 +211,7 @@ def LocalMO():
                     imo1 = imo0 + input.LinkMON * 2
                 LOrbMOC[iao0:iao1, imo0:imo1] = LinkMOC[index[1]][:aon, :]
                 imo.append(np.arange(ClusterMON)[imo0:imo1])
-                iao0 += ano0 - input.HAON * input.ClusterNH[i][j]
+            iao0 = iao1 + input.HAON * input.ClusterNH[i][j]
             imo0 = imo1
         LOrbMOS = MOS(LOrbMOC, LOrbMOC, AOS)
         LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113  # unit: eV
