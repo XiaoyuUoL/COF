@@ -5,7 +5,6 @@ import EleStruct
 import input
 import kStruct
 
-
 if (sys.argv[1] == '0'):
     exit()
     ########## find a way to run g16 calculation

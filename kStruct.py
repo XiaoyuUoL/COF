@@ -144,8 +144,8 @@ def kBand(kHighSymm, kNum, rH, rS=None):
             else:
                 kl.append(kDist(kPoints[-1], kPoints[-2]) + kl[-1])
 
-    if (os.path.isfile('{}/bands.dat'.format(input.WorkDir))):
-        os.system('rm {}/bands.dat'.format(input.WorkDir))
+    if (os.path.isfile('{}/bands_{}.dat'.format(input.WorkDir, system))):
+        os.system('rm {}/bands_{}.dat'.format(input.WorkDir, system))
 
     emin = None
     emax = None
