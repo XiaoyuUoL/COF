@@ -23,12 +23,16 @@ def kDist(k0, k1):
 
 # return eigenvalue and eigenvector at k
 def kSolver(k, rH, rS=None):
+    if (len(rH) != input.TMON):
+        print('error in kSolver: mismatch of length between TMON and rH')
+        exit()
+
+    if (rS != None and len(rS) != input.TMON):
+        print('error in kSolver: mismatch of length between TMON and rS')
+        exit()
+
     # return matrix in k-space
     def kOverlap(k, rS):
-        if (len(rS) != input.TMON):
-            print('error in kOverlap: mismatch of length between TMON and rS')
-            exit()
-    
         kS = np.zeros((input.TMON, input.TMON), dtype=complex)
         for i in np.arange(input.TMON):
             for j in np.arange(input.TMON):
@@ -36,13 +40,9 @@ def kSolver(k, rH, rS=None):
                     kS[i, j] += np.exp(2.j * np.pi * np.dot(k, s[:3])) * s[3]
     
         return kS
-    
+
     # return Hamiltonian in k-space
     def kHamiltonian(k, rH):
-        if (len(rH) != input.TMON):
-            print('error in kHamiltonian: mismatch of length between TMON and rH')
-            exit()
-    
         kH = np.zeros((input.TMON, input.TMON), dtype=complex)
         for i in np.arange(input.TMON):
             for j in np.arange(input.TMON):
@@ -72,11 +72,19 @@ def kSolver(k, rH, rS=None):
     else:
         kS = kOverlap(k[-1], rS)
         ke,kC = GeneralEigen(kS, kH)
-    
+
     return ke, kC
 
 # return density of state (including pDoS)
 def kDoS(kNum, rH, rS=None):
+    if (len(rH) != input.TMON):
+        print('error in kDoS: mismatch of length between TMON and rH')
+        exit()
+
+    if (rS != None and len(rS) != input.TMON):
+        print('error in kDoS: mismatch of length between TMON and rS')
+        exit()
+
     # multi-centre weighted-Gaussian broaden
     def Gaussian(x, sigma, mu, weight):
         xNum = len(x)
@@ -87,10 +95,6 @@ def kDoS(kNum, rH, rS=None):
         result /=  sigma * np.sqrt(2 * np.pi)
 
         return result
-
-        if (len(rH) != input.TMON):
-            print('error in kDoS: mismatch of length between TMON and rH')
-            exit()
 
     def DoS(e, sigma, normalize=1.0):
         de = sigma / 10.0
@@ -133,6 +137,10 @@ def kDoS(kNum, rH, rS=None):
 def kBand(kHighSymm, kNum, rH, rS=None):
     if (len(rH) != input.TMON):
         print('error in kBand: mismatch of length between TMON and rH')
+        exit()
+
+    if (rS != None and len(rS) != input.TMON):
+        print('error in kBand: mismatch of length between TMON and rS')
         exit()
 
     kPoints = []
@@ -209,20 +217,25 @@ def EffMass(k0, k1, dk, nk, rH, n=2, rS=None):
     k = []
     e = []
     for i in np.arange(nk):
-        k.append((k0 + vk * dk * i) * 0.52917721090380)                         # a.u. of 1/length
+        # a.u. of 1/length
+        k.append((k0 + vk * dk * i) * 0.52917721090380)
         ke,kC = kSolver(k[-1], rH, rS)
-        if (input.MOMode == 'o'):                                               # VBM
-            e.append([max(ke)] / 27.21138624598853)                             # a.u. of energy
-        elif (input.MOMode == 'u'):                                             # CBM
-            e.append([min(ke)] / 27.21138624598853)                             # a.u. of energy
+        # VBM
+        if (input.MOMode == 'o'):
+            # a.u. of energy
+            e.append([max(ke)] / 27.21138624598853)
+        # CBM
+        elif (input.MOMode == 'u'):
+            # a.u. of energy
+            e.append([min(ke)] / 27.21138624598853)
         else:
             print('EffMass: please use "u" or "o" for input.MOMode')
             exit()
 
     coeffs = np.polyfit(k, e, n)
 
-    # mass=hbar/(d2E/dk2)
-    mass = 0.5 / coeffs[-3]                                                     # a.u. of mass
+    # mass=hbar/(d2E/dk2), unit: me
+    mass = 0.5 / coeffs[-3]
     return mass
 
 ## use th k path in references for band structure calculation

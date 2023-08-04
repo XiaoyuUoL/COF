@@ -1,6 +1,7 @@
 import numpy as np
 
-## return MO orbital information ('MOE', 'MOC', 'AOS' and 'iHOMO') information from fchk file ('fchkfile')
+## return MO orbital information from fchk file ('fchkfile')
+# 'MOE': energy, 'MOC': coeff, 'AOS': overlap and 'iHOMO': index of HOMO
 # only for closed-shell systems
 def ReadFchkOrb(fchkfile):
     # calculate the power of symmetry matrix
@@ -45,10 +46,12 @@ def ReadFchkOrb(fchkfile):
 
     return MOE, MOC, AOS, iHOMO
 
-## write orbital information ('MOC') into fchk file ('fchkfile') based on original one ('fchkfile0')
+## write orbital into fchk file ('fchkfile') based on original one ('fchkfile0')
 def WriteFchkOrb(fchkfile0, fchkfile, MOE, MOC):
-    AON = np.shape(MOC)[0]  # Number of AO basis
-    MON = np.shape(MOC)[1]  # Number of MOs
+    # Number of AO basis
+    AON = np.shape(MOC)[0]
+    # Number of MOs
+    MON = np.shape(MOC)[1]
     if (MON != len(MOE)):
         print('WriteFchkOrb: number of MOs does not match between MOE and MOC')
         exit()
@@ -62,7 +65,7 @@ def WriteFchkOrb(fchkfile0, fchkfile, MOE, MOC):
         # read number of basis functions
         if(len(words) > 4 and words[:4] == ['Number', 'of', 'basis', 'functions']):
             if (AON != int(words[-1])):
-                print('WriteFchkOrb: number of AOs does not match between MOC and {].fchk'.format(fchkfile0))
+                print('WriteFchkOrb: number of AOs does not match between MOC and {}.fchk'.format(fchkfile0))
                 exit()
             fout.writelines(line)
         # read MO energies
