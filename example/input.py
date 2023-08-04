@@ -53,12 +53,22 @@ for i in np.arange(CoreNum):
         connect.append([])
     Connect.append(connect)
 
-Connect[0][0].append([14, 0])
-Connect[0][1].append([12, 0])
-Connect[0][2].append([13, 0])
-Connect[1][0].append([14, 1])
-Connect[1][1].append([12, 28])
-Connect[1][2].append([13, 27])
+# Fragment0
+if (WorkDir[-1] == '0'):
+    Connect[0][0].append([14, 0])
+    Connect[0][1].append([12, 0])
+    Connect[0][2].append([13, 0])
+    Connect[1][0].append([14, 1])
+    Connect[1][1].append([12, 28])
+    Connect[1][2].append([13, 27])
+# Fragment1
+else:
+    Connect[0][0].append([8, 18])
+    Connect[0][1].append([6, 9])
+    Connect[0][2].append([7, 9])
+    Connect[1][0].append([8, 19])
+    Connect[1][1].append([6, 32])
+    Connect[1][2].append([7, 32])
 
 PBC = []
 for i in np.arange(CoreNum):

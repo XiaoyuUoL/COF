@@ -168,6 +168,7 @@ for i in np.arange(input.LinkNum):
     XYZWrite('l{}-H'.format(i), name, coord)
     GJFWrite('l{}-H'.format(i), name, coord)
 
+'''
 # write xyz information for cores(-links) and links(-cores)
 for i in np.arange(input.CoreNum):
     ClusterIdx = [['c', i, 0, 0, 0]]
@@ -186,6 +187,7 @@ for i in np.arange(input.LinkNum):
     name,coord,NCL,NH = ClusterBuild(ClusterIdx)
     XYZWrite('l{}-c'.format(i), name, coord)
     GJFWrite('l{}-c'.format(i), name, coord)
+'''
 
 # write xyz information for clusters
 for i,indices in enumerate(input.ClusterIdx):

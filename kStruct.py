@@ -4,34 +4,7 @@ import os
 
 import input
 
-np.set_printoptions(precision=3, suppress=True)
 system = '{}_c{}_l{}'.format(input.MOMode, input.CoreMON, input.LinkMON)
-
-# solve M * C = S * C * e (return 'C' and 'e')
-def GeneralEigen(S, M):
-    # calculate the power of symmetry matrix
-    def MatrixPower(M, x):
-        e,V = np.linalg.eigh(M)
-        return np.matmul(V, np.matmul(np.diag(np.power(e, x)), V.conj().T))
-
-    Smh = MatrixPower(S, -0.5)
-    Mp = np.matmul(Smh, np.matmul(M, Smh))
-
-    e,Cp = np.linalg.eigh(Mp)
-    C = np.matmul(Smh, Cp)
-
-    return e, C
-
-# multi-centre weighted-Gaussian broaden
-def Gaussian(x, sigma, mu, weight):
-    xNum = len(x)
-    result = np.zeros(xNum, dtype = float)
-    for i in np.arange(xNum):
-        dx = x[i] - mu
-        result[i] = np.sum(weight * np.exp(-0.5 * (dx / sigma) ** 2))
-    result /=  sigma * np.sqrt(2 * np.pi)
-
-    return result
 
 def Project(C):
     Csq = (C * C.conjugate()).real
@@ -43,64 +16,101 @@ def Project(C):
 
     return result
 
-def DoS(e, sigma, normalize=1.0):
-    de = sigma / 10.0
-    eVal = np.arange(e.min() - 5.0 * sigma, e.max() + 5.0 * sigma, de)
-
-    DoSVal = Gaussian(eVal, sigma, e, 1.0 / normalize)
-
-    return np.array([eVal, DoSVal]).T
-
-def pDoS(e, weight, sigma, normalize=1.0):
-    de = sigma / 10.0
-    eVal = np.arange(e.min() - 5.0 * sigma, e.max() + 5.0 * sigma, de)
-    pDoSVal = np.zeros((len(weight), len(eVal)), dtype=float)
-    result = np.array(eVal)
-    for i in np.arange(len(weight)):
-        pDoSVal[i, :] = Gaussian(eVal, sigma, e, weight[i, :] / normalize)
-        result = np.append(result, pDoSVal[i, :])
-    result = np.append(result, np.sum(pDoSVal, axis=0))
-
-    return np.reshape(result, (len(weight) + 2, -1)).T
-
 # distance in k-space
 def kDist(k0, k1):
     dk = np.dot(k0, input.kV) - np.dot(k1, input.kV)
     return np.sqrt(np.sum(dk * dk))
 
-# return matrix in k-space
-def kOverlap(k, rS):
-    if (len(rS) != input.TMON):
-        print('error in kOverlap: mismatch of length between TMON and rS')
-        exit()
+# return eigenvalue and eigenvector at k
+def kSolver(k, rH, rS=None):
+    # return matrix in k-space
+    def kOverlap(k, rS):
+        if (len(rS) != input.TMON):
+            print('error in kOverlap: mismatch of length between TMON and rS')
+            exit()
+    
+        kS = np.zeros((input.TMON, input.TMON), dtype=complex)
+        for i in np.arange(input.TMON):
+            for j in np.arange(input.TMON):
+                for s in rS[i][j]:
+                    kS[i, j] += np.exp(2.j * np.pi * np.dot(k, s[:3])) * s[3]
+    
+        return kS
+    
+    # return Hamiltonian in k-space
+    def kHamiltonian(k, rH):
+        if (len(rH) != input.TMON):
+            print('error in kHamiltonian: mismatch of length between TMON and rH')
+            exit()
+    
+        kH = np.zeros((input.TMON, input.TMON), dtype=complex)
+        for i in np.arange(input.TMON):
+            for j in np.arange(input.TMON):
+                for h in rH[i][j]:
+                    kH[i, j] += np.exp(2.j * np.pi * np.dot(k, h[:3])) * h[3]
+    
+        return kH
 
-    kS = np.zeros((input.TMON, input.TMON), dtype=complex)
-    for i in np.arange(input.TMON):
-        for j in np.arange(input.TMON):
-            for s in rS[i][j]:
-                kS[i, j] += np.exp(2.j * np.pi * np.dot(k, s[:3])) * s[3]
+    # solve M * C = S * C * e (return 'C' and 'e')
+    def GeneralEigen(S, M):
+        # calculate the power of symmetry matrix
+        def MatrixPower(M, x):
+            e,V = np.linalg.eigh(M)
+            return np.matmul(V, np.matmul(np.diag(np.power(e, x)), V.conj().T))
 
-    return kS
+        Smh = MatrixPower(S, -0.5)
+        Mp = np.matmul(Smh, np.matmul(M, Smh))
 
-# return Hamiltonian in k-space
-def kHamiltonian(k, rH):
-    if (len(rH) != input.TMON):
-        print('error in kHamiltonian: mismatch of length between TMON and rH')
-        exit()
+        e,Cp = np.linalg.eigh(Mp)
+        C = np.matmul(Smh, Cp)
 
-    kH = np.zeros((input.TMON, input.TMON), dtype=complex)
-    for i in np.arange(input.TMON):
-        for j in np.arange(input.TMON):
-            for h in rH[i][j]:
-                kH[i, j] += np.exp(2.j * np.pi * np.dot(k, h[:3])) * h[3]
+        return e, C
 
-    return kH
+    kH = kHamiltonian(k, rH)
+    if (rS == None):
+        ke,kC = np.linalg.eigh(kH)
+    else:
+        kS = kOverlap(k[-1], rS)
+        ke,kC = GeneralEigen(kS, kH)
+    
+    return ke, kC
 
 # return density of state (including pDoS)
 def kDoS(kNum, rH, rS=None):
-    if (len(rH) != input.TMON):
-        print('error in kDoS: mismatch of length between TMON and rH')
-        exit()
+    # multi-centre weighted-Gaussian broaden
+    def Gaussian(x, sigma, mu, weight):
+        xNum = len(x)
+        result = np.zeros(xNum, dtype = float)
+        for i in np.arange(xNum):
+            dx = x[i] - mu
+            result[i] = np.sum(weight * np.exp(-0.5 * (dx / sigma) ** 2))
+        result /=  sigma * np.sqrt(2 * np.pi)
+
+        return result
+
+        if (len(rH) != input.TMON):
+            print('error in kDoS: mismatch of length between TMON and rH')
+            exit()
+
+    def DoS(e, sigma, normalize=1.0):
+        de = sigma / 10.0
+        eVal = np.arange(e.min() - 5.0 * sigma, e.max() + 5.0 * sigma, de)
+    
+        DoSVal = Gaussian(eVal, sigma, e, 1.0 / normalize)
+    
+        return np.array([eVal, DoSVal]).T
+    
+    def pDoS(e, weight, sigma, normalize=1.0):
+        de = sigma / 10.0
+        eVal = np.arange(e.min() - 5.0 * sigma, e.max() + 5.0 * sigma, de)
+        pDoSVal = np.zeros((len(weight), len(eVal)), dtype=float)
+        result = np.array(eVal)
+        for i in np.arange(len(weight)):
+            pDoSVal[i, :] = Gaussian(eVal, sigma, e, weight[i, :] / normalize)
+            result = np.append(result, pDoSVal[i, :])
+        result = np.append(result, np.sum(pDoSVal, axis=0))
+    
+        return np.reshape(result, (len(weight) + 2, -1)).T
 
     e = np.array([], dtype=float)
     w = np.array([[], []], dtype=float)
@@ -110,12 +120,7 @@ def kDoS(kNum, rH, rS=None):
             kb = -0.5 + ib / (1.0 * kNum)
             for ic in np.arange(kNum):
                 kc = -0.5 + ic / (1.0 * kNum)
-                kH = kHamiltonian([ka, kb, kc], rH)
-                if (rS == None):
-                    ke,kC = np.linalg.eigh(kH)
-                else:
-                    kS = kOverlap([ka, kb, kc], rS)
-                    ke,kC = GeneralEigen(kS, kH)
+                ke,kC = kSolver([ka, kb, kc], rH, rS)
                 e = np.append(e, ke)
                 w = np.append(w, Project(kC), axis=1)
 
@@ -153,12 +158,7 @@ def kBand(kHighSymm, kNum, rH, rS=None):
     for i in np.arange(input.TMON):
         fout.append(open('band-{}.dat'.format(i), 'w'))
     for dk,kPoint in zip(kl,kPoints):
-        kH = kHamiltonian(kPoint, rH)
-        if (rS == None):
-            ke,kC = np.linalg.eigh(kH)
-        else:
-            kS = kOverlap(kPoint, rS)
-            ke,kC = GeneralEigen(kS, kH)
+        ke,kC = kSolver(kPoint, rH, rS)
         if (emin == None or emin > min(ke)):
             emin = min(ke)
         if (emax == None or emax < max(ke)):
@@ -197,6 +197,33 @@ def kBand(kHighSymm, kNum, rH, rS=None):
     fout.writelines('\n')
 
     fout.close()
+
+## return effective mass based on a begin and end k-point
+# k0: begin k-point (k-point of VBM for hole or CBM for electron)
+# k1: end k-point (i.e., effective mass through k0-k path)
+# dk: interval of |k| for effective mass calculation (unit: A^-1)
+# nk: number of k-points for effective mass calculation
+# n: highest order of polynomial fitting
+def EffMass(k0, k1, dk, nk, rH, n=2, rS=None):
+    vk = (k1 - k0) / kDist(k0, k1)
+    k = []
+    e = []
+    for i in np.arange(nk):
+        k.append((k0 + vk * dk * i) * 0.52917721090380)                         # a.u. of 1/length
+        ke,kC = kSolver(k[-1], rH, rS)
+        if (input.MOMode == 'o'):                                               # VBM
+            e.append([max(ke)] / 27.21138624598853)                             # a.u. of energy
+        elif (input.MOMode == 'u'):                                             # CBM
+            e.append([min(ke)] / 27.21138624598853)                             # a.u. of energy
+        else:
+            print('EffMass: please use "u" or "o" for input.MOMode')
+            exit()
+
+    coeffs = np.polyfit(k, e, n)
+
+    # mass=hbar/(d2E/dk2)
+    mass = 0.5 / coeffs[-3]                                                     # a.u. of mass
+    return mass
 
 ## use th k path in references for band structure calculation
 ## 1. Y. Hinuma et al. Computational Materials Science, 2017, 128, 140-184. (vaspkit)
