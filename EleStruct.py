@@ -75,39 +75,41 @@ def LocalMO():
             CoreMOC.append(moc[:, ihomo-input.CoreMON:ihomo+input.CoreMON])
     #print()
 
-    ## try to use orbital energy of core in core-links cluster
-    #for i in np.arange(input.CoreNum):
-    #    MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/c{}-l'.format(
-    #        input.WorkDir, i))
-    #    AON = np.shape(MOC)[0]
-    #    tmp = np.matmul(AOS, MOC)
-    #    AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
-    #    MON = input.CoreMON
-    #    LOrbMOC = np.zeros((AON, MON), dtype=float)
-    #    aon = np.shape(CoreMOC[i])[0] - input.HAON * input.CoreNH[i]
-    #    for j in np.arange(MON):
-    #        LOrbMOC[:aon, j] = CoreMOC[i][:aon, j]
-    #    LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
-    #    indices = input.MONIdx['{}{}'.format('c', i)]
-    #    ## using orbital energy of local orbital in core-links cluster
-    #    if (input.MOMode == 'a'):  # all
-    #        for i in np.arange(input.CoreMON * 2):
-    #            idx = indices[i]
-    #            rS[idx][idx].append([0, 0, 0, 1.])
-    #            rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #            rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #    else:
-    #        for i in np.arange(input.CoreMON):
-    #            idx = indices[i]
-    #            rS[idx][idx].append([0, 0, 0, 1.])
-    #            if (input.MOMode == 'u'):  # unoccupied FMOs
-    #                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #            else:  # occupied FMOs
-    #                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #    print(LOrbMOF)
-    #print()
+    '''
+    # try to use orbital energy of core in core-links cluster
+    for i in np.arange(input.CoreNum):
+        MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/c{}-l'.format(
+            input.WorkDir, i))
+        AON = np.shape(MOC)[0]
+        tmp = np.matmul(AOS, MOC)
+        AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
+        MON = input.CoreMON
+        LOrbMOC = np.zeros((AON, MON), dtype=float)
+        aon = np.shape(CoreMOC[i])[0] - input.HAON * input.CoreNH[i]
+        for j in np.arange(MON):
+            LOrbMOC[:aon, j] = CoreMOC[i][:aon, j]
+        LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
+        indices = input.MONIdx['{}{}'.format('c', i)]
+        ## using orbital energy of local orbital in core-links cluster
+        if (input.MOMode == 'a'):  # all
+            for i in np.arange(input.CoreMON * 2):
+                idx = indices[i]
+                rS[idx][idx].append([0, 0, 0, 1.])
+                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+        else:
+            for i in np.arange(input.CoreMON):
+                idx = indices[i]
+                rS[idx][idx].append([0, 0, 0, 1.])
+                if (input.MOMode == 'u'):  # unoccupied FMOs
+                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                else:  # occupied FMOs
+                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+        print(LOrbMOF)
+    print()
+    '''
 
     LinkMOC = []
     for i in np.arange(input.LinkNum):
@@ -142,39 +144,41 @@ def LocalMO():
             LinkMOC.append(moc[:, ihomo-input.LinkMON:ihomo+input.LinkMON])
     #print()
 
-    ## try to use energy of link in link-cores cluster
-    #for i in np.arange(input.LinkNum):
-    #    MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/l{}-c'.format(
-    #        input.WorkDir, i))
-    #    AON = np.shape(MOC)[0]
-    #    tmp = np.matmul(AOS, MOC)
-    #    AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
-    #    MON = input.LinkMON
-    #    LOrbMOC = np.zeros((AON, MON), dtype=float)
-    #    aon = np.shape(LinkMOC[i])[0] - input.HAON * input.LinkNH[i]
-    #    for j in np.arange(MON):
-    #        LOrbMOC[:aon, j] = LinkMOC[i][:aon, j]
-    #    LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
-    #    indices = input.MONIdx['{}{}'.format('l', i)]
-    #    # using orbital energy of local orbital in link-cores cluster
-    #    if (input.MOMode == 'a'):  # all
-    #        for i in np.arange(input.LinkMON * 2):
-    #            idx = indices[i]
-    #            rS[idx][idx].append([0, 0, 0, 1.])
-    #            rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #            rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #    else:
-    #        for i in np.arange(input.LinkMON):
-    #            idx = indices[i]
-    #            rS[idx][idx].append([0, 0, 0, 1.])
-    #            if (input.MOMode == 'u'):  # unoccupied FMOs
-    #                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #            else:  # occupied FMOs
-    #                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-    #    print(LOrbMOF)
-    #print()
+    '''
+    # try to use energy of link in link-cores cluster
+    for i in np.arange(input.LinkNum):
+        MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/l{}-c'.format(
+            input.WorkDir, i))
+        AON = np.shape(MOC)[0]
+        tmp = np.matmul(AOS, MOC)
+        AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
+        MON = input.LinkMON
+        LOrbMOC = np.zeros((AON, MON), dtype=float)
+        aon = np.shape(LinkMOC[i])[0] - input.HAON * input.LinkNH[i]
+        for j in np.arange(MON):
+            LOrbMOC[:aon, j] = LinkMOC[i][:aon, j]
+        LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
+        indices = input.MONIdx['{}{}'.format('l', i)]
+        # using orbital energy of local orbital in link-cores cluster
+        if (input.MOMode == 'a'):  # all
+            for i in np.arange(input.LinkMON * 2):
+                idx = indices[i]
+                rS[idx][idx].append([0, 0, 0, 1.])
+                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+        else:
+            for i in np.arange(input.LinkMON):
+                idx = indices[i]
+                rS[idx][idx].append([0, 0, 0, 1.])
+                if (input.MOMode == 'u'):  # unoccupied FMOs
+                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                else:  # occupied FMOs
+                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+        print(LOrbMOF)
+    print()
+    '''
 
     # cluster orbitals information
     for i,indices in enumerate(input.ClusterIdx):

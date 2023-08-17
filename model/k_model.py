@@ -142,16 +142,16 @@ def k_band(k_band_num, k_high_symm, k_V, r_H, core_orb_num):
 # dk: interval of |k| for effective mass calculation (unit: A^-1)
 # nk: number of k-points for effective mass calculation
 # n: highest order of polynomial fitting
-def EffMass(k_V, k0, k1, dk, nk, r_H, mo_mode='u', n=2):
-    vk = (k1 - k0) / k_dist(k0, k1, k_V)
+def k_effmass(k_lv, k0, k1, dk, nk, r_H, mo_mode='u', n=2):
+    vk = (k1 - k0) / k_dist(k0, k1, k_lv)
     k = []
     e = []
     for i in np.arange(nk):
         # a.u. of 1/length
         k.append(i * dk * 0.52917721090380)
-        k_point = k0 + vk * dk * i
+        k_point = k0 + vk * i * dk
         k_H = k_Hamiltonian(k_point, r_H)
-        ke,kC = np.linalg.eigh(k_H)
+        ke = np.linalg.eigvalsh(k_H)
         # VBM
         if (mo_mode == 'o'):
             # a.u. of energy
@@ -161,12 +161,12 @@ def EffMass(k_V, k0, k1, dk, nk, r_H, mo_mode='u', n=2):
             # a.u. of energy
             e.append(min(ke) / 27.21138624598853)
         else:
-            print('EffMass: please use "u" or "o" for mo_mode')
+            print('k_effmass: please use "u" or "o" for mo_mode')
             exit()
     
-    np.savetxt('test.dat', np.array([k, e]).T)
+    #np.savetxt('test.dat', np.array([k, e]).T)
     coeffs = np.polyfit(k, e, n)
 
     # mass=hbar/(d2E/dk2), unit: me
     mass = 0.5 / coeffs[-3]
-    return mass
+    return mass 

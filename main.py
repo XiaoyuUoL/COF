@@ -7,7 +7,7 @@ import kStruct
 
 # build core-H/link-H/cluster
 if (sys.argv[1] == '0'):
-    exit()
+    pass
     ########## find a way to run g16 calculation
     #os.system('./{}/submit.sh'.format(input.WorkDir))
 # calculate DoS and band structure
