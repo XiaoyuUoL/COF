@@ -106,7 +106,7 @@ def ClusterBuild(ClusterIdx):
                         coordl = LinkCoord[il][connect[1]] + dxyzl
                         BondVect = coordl - coordc
                         BondLength = np.sqrt(np.sum(BondVect * BondVect))
-                        XHL = input.XHLength[LinkName[il][connect[1]].lower()]
+                        XHL = input.XHLength[CoreName[ic][connect[0]].lower()]
                         coordH = coordc + XHL / BondLength * BondVect + dxyz
                         coord += [list(coordH)]
         else:
@@ -128,7 +128,7 @@ def ClusterBuild(ClusterIdx):
                         coordl = LinkCoord[il][connect[1]]
                         BondVect = coordc - coordl
                         BondLength = np.sqrt(np.sum(BondVect * BondVect))
-                        XHL = input.XHLength[CoreName[ic][connect[0]].lower()]
+                        XHL = input.XHLength[LinkName[il][connect[1]].lower()]
                         coordH = coordl + XHL / BondLength * BondVect + dxyz
                         coord += [list(coordH)]
         NH.append(nh)
