@@ -1,28 +1,28 @@
 import numpy as np
 
-import fchk
 import input
+import readqc
 
 # local orbitals information from gas phase calculation
 def LocalMO():
     # overlap matrix
-    def MOS(MOC0, MOC1, AOS):
-        return np.matmul(MOC0.T, np.matmul(AOS, MOC1))
+    def MOS(moc0, moc1, aos):
+        return moc0.T @ aos @ moc1
 
     # Fock matrix
-    def MOF(MOC0, MOC1, AOF):
-        return np.matmul(MOC0.T, np.matmul(AOF, MOC1))
+    def MOF(moc0, moc1, aof):
+        return moc0.T @aof @ moc1
 
     # calculate the power of symmetry matrix
     def MatrixPower(M, x):
-        e,V = np.linalg.eigh(M)
-        return np.matmul(V, np.matmul(np.diag(np.power(e, x)), V.T))
+        e,v = np.linalg.eigh(M)
+        return v @ np.diag(np.power(e, x)) @ v.T
 
     # (real space) Overlap (local orbital) from DFT gas phase calculation
     rS = []
     for i0 in np.arange(input.TMON):
         s = [[]]
-        for i1 in np.arange(input.TMON):
+        for i1 in np.arange(input.TMON - 1):
             s.append([])
         rS.append(s)
 
@@ -30,7 +30,7 @@ def LocalMO():
     rH0 = []
     for i0 in np.arange(input.TMON):
         h0 = [[]]
-        for i1 in np.arange(input.TMON):
+        for i1 in np.arange(input.TMON - 1):
             h0.append([])
         rH0.append(h0)
 
@@ -38,129 +38,109 @@ def LocalMO():
     rH = []
     for i0 in np.arange(input.TMON):
         h = [[]]
-        for i1 in np.arange(input.TMON):
+        for i1 in np.arange(input.TMON - 1):
             h.append([])
         rH.append(h)
 
     CoreMOC = []
     for i in np.arange(input.CoreNum):
-        moe,moc,aos,ihomo = fchk.ReadFchkOrb('{}/c{}-H'.format(
-            input.WorkDir, i))
-        moe *= 27.2113
-        #print(moe[ihomo:ihomo+input.CoreMON])
-        #print(moe[ihomo-input.CoreMON:ihomo])
-        indices = input.MONIdx['{}{}'.format('c', i)] 
+        occe,occc,vire,virc = readqc.ReadQC('{}/c{}-H'.format(input.QCDir, i))
+        occe *= 27.2113
+        vire *= 27.2113
+        indices = input.MONIdx['{}{}'.format('c', i)]
         # using orbital energy of core units
-        if (input.MOMode == 'a'):  # all
-            for i in np.arange(input.CoreMON * 2):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
-                rH0[idx][idx].append([0, 0, 0, moe[ihomo+i-input.CoreMON]])
-                rH[idx][idx].append([0, 0, 0, moe[ihomo+i-input.CoreMON]])
+        for i in np.arange(input.CoreMON):
+            idx = indices[i]
+            rS[idx][idx].append([0, 0, 0, 1.])
+            if input.MOMode == 'o':  # occupied FMOs
+                rH0[idx][idx].append([0, 0, 0, occe[i-input.CoreMON]])
+                rH[idx][idx].append([0, 0, 0, occe[i-input.CoreMON]])
+            elif input.MOMode == 'u':  # unoccupied FMOs
+                rH0[idx][idx].append([0, 0, 0, vire[i]])
+                rH[idx][idx].append([0, 0, 0, vire[i]])
+            else:
+                print('MOMode should be "o" or "u"')
+                exit(0)
+        if input.MOMode == 'o':  # occupied FMOs
+            CoreMOC.append(occc[:, -input.CoreMON:])
+        elif input.MOMode == 'u':  # unoccupied FMOs
+            CoreMOC.append(virc[:, :input.CoreMON])
         else:
-            for i in np.arange(input.CoreMON):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
-                if (input.MOMode == 'u'):  # unoccupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, moe[ihomo+i]])
-                    rH[idx][idx].append([0, 0, 0, moe[ihomo+i]])
-                else:  # occupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, moe[ihomo+i-input.CoreMON]])
-                    rH[idx][idx].append([0, 0, 0, moe[ihomo+i-input.CoreMON]])
-        if (input.MOMode == 'u'):  # unoccupied FMOs
-            CoreMOC.append(moc[:, ihomo:ihomo+input.CoreMON])
-        elif (input.MOMode == 'o'):  # occupied FMOs
-            CoreMOC.append(moc[:, ihomo-input.CoreMON:ihomo])
-        else:  # all
-            CoreMOC.append(moc[:, ihomo-input.CoreMON:ihomo+input.CoreMON])
-    #print()
+            print('MOMode should be "o" or "u"')
+            exit(0)
 
     '''
     # try to use orbital energy of core in core-links cluster
     for i in np.arange(input.CoreNum):
-        MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/c{}-l'.format(
-            input.WorkDir, i))
+        MOE,MOC,aos,iHOMO = readqc.ReadFchkOrb('{}/c{}-l'.format(input.QCDir, i))
         AON = np.shape(MOC)[0]
-        tmp = np.matmul(AOS, MOC)
-        AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
+        tmp = np.matmul(aos, MOC)
+        aof = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
         MON = input.CoreMON
         LOrbMOC = np.zeros((AON, MON), dtype=float)
         aon = np.shape(CoreMOC[i])[0] - input.HAON * input.CoreNH[i]
         for j in np.arange(MON):
             LOrbMOC[:aon, j] = CoreMOC[i][:aon, j]
-        LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
+        LOrbMOF = MOF(LOrbMOC, LOrbMOC, aof) * 27.2113
         indices = input.MONIdx['{}{}'.format('c', i)]
         ## using orbital energy of local orbital in core-links cluster
-        if (input.MOMode == 'a'):  # all
-            for i in np.arange(input.CoreMON * 2):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
+        for i in np.arange(input.CoreMON):
+            idx = indices[i]
+            rS[idx][idx].append([0, 0, 0, 1.])
+            if input.MOMode == 'u':  # unoccupied FMOs
                 rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
                 rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-        else:
-            for i in np.arange(input.CoreMON):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
-                if (input.MOMode == 'u'):  # unoccupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-                else:  # occupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
-                    rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+            else:  # occupied FMOs
+                rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
+                rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
         print(LOrbMOF)
     print()
     '''
 
     LinkMOC = []
     for i in np.arange(input.LinkNum):
-        moe,moc,aos,ihomo = fchk.ReadFchkOrb('{}/l{}-H'.format(
-            input.WorkDir, i))
-        moe *= 27.2113
-        #print(moe[ihomo:ihomo+input.LinkMON])
-        #print(moe[ihomo-input.LinkMON:ihomo])
+        occe,occc,vire,virc = readqc.ReadQC('{}/l{}-H'.format(input.QCDir, i))
+        occe *= 27.2113
+        vire *= 27.2113
         indices = input.MONIdx['{}{}'.format('l', i)]
         # using energy of link units
-        if (input.MOMode == 'a'):  # all
-            for i in np.arange(input.LinkMON * 2):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
-                rH0[idx][idx].append([0, 0, 0, moe[ihomo+i-input.LinkMON]])
-                rH[idx][idx].append([0, 0, 0, moe[ihomo+i-input.LinkMON]])
+        for i in np.arange(input.LinkMON):
+            idx = indices[i]
+            rS[idx][idx].append([0, 0, 0, 1.])
+            if input.MOMode == 'o':  # occupied FMOs
+                rH0[idx][idx].append([0, 0, 0, occe[i-input.LinkMON]])
+                rH[idx][idx].append([0, 0, 0, occe[i-input.LinkMON]])
+            elif input.MOMode == 'u':  # unoccupied FMOs
+                rH0[idx][idx].append([0, 0, 0, vire[i]])
+                rH[idx][idx].append([0, 0, 0, vire[i]])
+            else:
+               print('MOMode should be "o" or "u"')
+               exit(0)
+        if input.MOMode == 'o':  # occupied FMOs
+            LinkMOC.append(occc[:, -input.LinkMON:])
+        elif input.MOMode == 'u':  # unoccupied FMOs
+            LinkMOC.append(virc[:, :input.LinkMON])
         else:
-            for i in np.arange(input.LinkMON):
-                idx = indices[i]
-                rS[idx][idx].append([0, 0, 0, 1.])
-                if (input.MOMode == 'u'):  # unoccupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, moe[ihomo+i]])
-                    rH[idx][idx].append([0, 0, 0, moe[ihomo+i]])
-                else:  # occupied FMOs
-                    rH0[idx][idx].append([0, 0, 0, moe[ihomo+i-input.LinkMON]])
-                    rH[idx][idx].append([0, 0, 0, moe[ihomo+i-input.LinkMON]])
-        if (input.MOMode == 'u'):  # unoccupied FMOs
-            LinkMOC.append(moc[:, ihomo:ihomo+input.LinkMON])
-        elif (input.MOMode == 'o'):  # occupied FMOs
-            LinkMOC.append(moc[:, ihomo-input.LinkMON:ihomo])
-        else:  # all
-            LinkMOC.append(moc[:, ihomo-input.LinkMON:ihomo+input.LinkMON])
-    #print()
+            print('MOMode should be "o" or "u"')
+            exit(0)
 
     '''
     # try to use energy of link in link-cores cluster
     for i in np.arange(input.LinkNum):
-        MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/l{}-c'.format(
-            input.WorkDir, i))
+        MOE,MOC,aos,iHOMO = fchk.ReadFchkOrb('{}/l{}-c'.format(
+            input.QCDir, i))
         AON = np.shape(MOC)[0]
-        tmp = np.matmul(AOS, MOC)
-        AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
+        tmp = np.matmul(aos, MOC)
+        aof = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
         MON = input.LinkMON
         LOrbMOC = np.zeros((AON, MON), dtype=float)
         aon = np.shape(LinkMOC[i])[0] - input.HAON * input.LinkNH[i]
         for j in np.arange(MON):
             LOrbMOC[:aon, j] = LinkMOC[i][:aon, j]
-        LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113
+        LOrbMOF = MOF(LOrbMOC, LOrbMOC, aof) * 27.2113
         indices = input.MONIdx['{}{}'.format('l', i)]
         # using orbital energy of local orbital in link-cores cluster
-        if (input.MOMode == 'a'):  # all
+        if input.MOMode == 'a':  # all
             for i in np.arange(input.LinkMON * 2):
                 idx = indices[i]
                 rS[idx][idx].append([0, 0, 0, 1.])
@@ -170,7 +150,7 @@ def LocalMO():
             for i in np.arange(input.LinkMON):
                 idx = indices[i]
                 rS[idx][idx].append([0, 0, 0, 1.])
-                if (input.MOMode == 'u'):  # unoccupied FMOs
+                if input.MOMode == 'u':  # unoccupied FMOs
                     rH0[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
                     rH[idx][idx].append([0, 0, 0, LOrbMOF[i, i]])
                 else:  # occupied FMOs
@@ -182,52 +162,38 @@ def LocalMO():
 
     # cluster orbitals information
     for i,indices in enumerate(input.ClusterIdx):
-        MOE,MOC,AOS,iHOMO = fchk.ReadFchkOrb('{}/cluster{}-H'.format(
-            input.WorkDir, i))
-        AON = np.shape(MOC)[0]
-        tmp = np.matmul(AOS, MOC)
-        AOF = np.matmul(tmp, np.matmul(np.diag(MOE), tmp.T))
+        aos,aof = readqc.ReadQC('{}/cluster{}-H'.format(input.QCDir, i), True)
+        AON = np.shape(aos)[0]
+        aof *= 27.2113  # unit: eV
         ClusterMON = np.dot([input.CoreMON, input.LinkMON], input.ClusterNCL[i])
-        if (input.MOMode == 'a'):
-            ClusterMON *= 2
         LOrbMOC = np.zeros((AON, ClusterMON), dtype=float)  # local orbital
         iao0 = 0
         imo0 = 0
         imo = []
         for j,index in enumerate(indices):
-            if (index[0] == 'c'):
+            if index[0] == 'c':
                 aon0 = np.shape(CoreMOC[index[1]])[0]
                 aon = aon0 - input.HAON * input.CoreNH[index[1]]
                 iao1 = iao0 + aon
-                if (input.MOMode == 'u' or input.MOMode == 'o'):
-                    imo1 = imo0 + input.CoreMON
-                else:
-                    imo1 = imo0 + input.CoreMON * 2
+                imo1 = imo0 + input.CoreMON
                 LOrbMOC[iao0:iao1, imo0:imo1] = CoreMOC[index[1]][:aon, :]
                 imo.append(np.arange(ClusterMON)[imo0:imo1])
             else:
                 ano0 = np.shape(LinkMOC[index[1]])[0]
                 aon = ano0 - input.HAON * input.LinkNH[index[1]]
                 iao1 = iao0 + aon
-                if (input.MOMode == 'u' or input.MOMode == 'o'):
-                    imo1 = imo0 + input.LinkMON
-                else:
-                    imo1 = imo0 + input.LinkMON * 2
+                imo1 = imo0 + input.LinkMON
                 LOrbMOC[iao0:iao1, imo0:imo1] = LinkMOC[index[1]][:aon, :]
                 imo.append(np.arange(ClusterMON)[imo0:imo1])
             iao0 = iao1 + input.HAON * input.ClusterNH[i][j]
             imo0 = imo1
-        LOrbMOS = MOS(LOrbMOC, LOrbMOC, AOS)
-        LOrbMOF = MOF(LOrbMOC, LOrbMOC, AOF) * 27.2113  # unit: eV
+        LOrbMOS = MOS(LOrbMOC, LOrbMOC, aos)
+        LOrbMOF = MOF(LOrbMOC, LOrbMOC, aof)
         Smh = MatrixPower(LOrbMOS, -0.5)
         # local orthonormalized orbital
         LOOrbMOF = np.matmul(Smh, np.matmul(LOrbMOF, Smh))  # unit: eV
-        #print(LOrbMOS)
-        #print(LOrbMOF)
-        #print(LOOrbMOF)
-        #print()
         # cosider all coupling terms in dimer clusters 
-        if (len(indices) == 2):
+        if len(indices) == 2:
             imo0 = input.MONIdx['{}{}'.format(indices[0][0], indices[0][1])]
             imo1 = input.MONIdx['{}{}'.format(indices[1][0], indices[1][1])]
             pbc = np.array(indices[1][2:]) - np.array(indices[0][2:])
@@ -246,7 +212,7 @@ def LocalMO():
         else:
             for i0,index0 in enumerate(indices):
                 for i1,index1 in enumerate(indices):
-                    if (index0[0] == 'c' and index1[0] == 'l'):
+                    if index0[0] == 'c' and index1[0] == 'l':
                         imo0 = input.MONIdx['{}{}'.format(index0[0], index0[1])]
                         imo1 = input.MONIdx['{}{}'.format(index1[0], index1[1])]
                         pbc = np.array(index1[2:]) - np.array(index0[2:])
@@ -263,16 +229,16 @@ def LocalMO():
                                 rH[idx1][idx0].append(list(-pbc) + [mof])
 
     #for i0 in np.arange(input.TMON):
-    #    if(rH[i0][i0] != []):
+    #    if rH[i0][i0] != []:
     #        for h in rH[i0][i0]:
     #            print(i0, i0, h)
     #print()
     #
     #for i0 in np.arange(input.TMON):
     #    for i1 in np.arange(input.TMON):
-    #        if (i0 >= i1):
+    #        if i0 >= i1:
     #            continue
-    #        if(rH[i0][i1] != []):
+    #        if rH[i0][i1] != []:
     #            for h in rH[i0][i1]:
     #                print(i0, i1, h)
     #exit()

@@ -70,7 +70,7 @@ def kSolver(k, rH, rS=None):
     if (rS == None):
         ke,kC = np.linalg.eigh(kH)
     else:
-        kS = kOverlap(k[-1], rS)
+        kS = kOverlap(k, rS)
         ke,kC = GeneralEigen(kS, kH)
 
     return ke, kC

@@ -2,11 +2,11 @@ import numpy as np
 import os
 
 ## Work folder
-WorkDir = 'example'
+WorkDir = 'test'
 
 ## crystal parameter
 # real space lattice vector
-if (os.path.isfile('{}/CONTCAR'.format(WorkDir))):
+if os.path.isfile('{}/CONTCAR'.format(WorkDir)):
     fin = open('{}/CONTCAR'.format(WorkDir))
     fin.readline()
     scale = float(fin.readline())
@@ -16,7 +16,7 @@ if (os.path.isfile('{}/CONTCAR'.format(WorkDir))):
         rV[i, :] = np.array(data, dtype=float)
     rV *= scale
     fin.close()
-elif (os.path.isfile('{}/POSCAR'.format(WorkDir))):
+elif os.path.isfile('{}/POSCAR'.format(WorkDir)):
     fin = open('{}/POSCAR'.format(WorkDir))
     fin.readline()
     scale = float(fin.readline())
@@ -26,10 +26,10 @@ elif (os.path.isfile('{}/POSCAR'.format(WorkDir))):
         rV[i, :] = np.array(data, dtype=float)
     rV *= scale
     fin.close()
-else:
-    rV = np.array([[37.5899009704999969, 0.0000000000000000, 0.0000000000000000],
-                   [-18.7949504852000011, 32.5538091661999971, 0.0000000000000000],
-                   [0.0000000000000000, 0.0000000000000000, 3.6376500130000000]], dtype=float)
+#else:
+#    rV = np.array([[14.5740003585999993,0.0000000000000000,0.0000000000000000],
+#                   [-7.2870001792999997,12.6214545453000007,0.0000000000000000],
+#                   [0.0000000000000000,0.0000000000000000,3.4040000439000000]], dtype=float)
 
 # k-space lattice vector
 kV = np.zeros((3, 3), dtype=float)
@@ -52,13 +52,12 @@ for i in np.arange(CoreNum):
     for j in np.arange(LinkNum):
         connect.append([])
     Connect.append(connect)
-
-Connect[0][0].append([14, 0])
-Connect[0][1].append([12, 0])
-Connect[0][2].append([13, 0])
-Connect[1][0].append([14, 1])
-Connect[1][1].append([12, 28])
-Connect[1][2].append([13, 27])
+Connect[0][0].append([0, 8])
+Connect[0][1].append([4, 0])
+Connect[0][2].append([3, 0])
+Connect[1][0].append([4, 0])
+Connect[1][1].append([3, 7])
+Connect[1][2].append([0, 8])
 
 PBC = []
 for i in np.arange(CoreNum):
@@ -69,7 +68,6 @@ for i in np.arange(CoreNum):
             tmp.append([0, 0, 0])
         pbc.append(tmp)
     PBC.append(pbc)
-
 PBC[1][1][0] = [ 0, -1,  0]
 PBC[1][2][0] = [ 1,  0,  0]
 
@@ -83,7 +81,7 @@ ClusterIdx = []
 for i in np.arange(CoreNum):
     CoreIdx = ['c', i, 0, 0, 0]
     for j in np.arange(LinkNum):
-        if (PBC[i][j] != []):
+        if PBC[i][j] != []:
             for pbc in PBC[i][j]:
                 LinkIdx = ['l', j] + list(pbc)
                 ClusterIdx.append([CoreIdx, LinkIdx])
@@ -106,31 +104,34 @@ ClusterNH = []
 XHLength = {'c': 1.07, 'n': 1.00, 'o': 0.96}
 
 ## electronic structure information
-# g16 calculation options
+Package = 'pyscf' # 'pyscf' or 'g16'
 ProcNum = 8
 Memory = 9500
 Func = 'b3lyp'
 Basis = '6-31g*'
 
-# sbatch options
-SBATCH = {'N': '{:d}'.format(1),
-          'n': '{:d}'.format(ProcNum),
-          't': '72:00:00',
-          'p': 'troisi'}
+# number of basis function of H element 
+HAON = 2 # 6-31g* basis set
 
-# number of basis function of H element (6-31g* basis set)
-HAON = 2
+# define working (QC) directory
+QCDir = ''
+if Package == 'g16':
+    if not os.path.isfile('{}/g16.sh'.format(WorkDir)):
+        print('error: g16.sh is not found for submitting g16 job')
+        exit()
+    QCDir = WorkDir + '/g16'
+elif Package == 'pyscf':
+    QCDir = WorkDir + '/pyscf'
+else:
+    print('error in input.py: unknown package')
+    exit()
 
 # local FMOs for k-space calculation
-MOMode = 'u'  # 'u' for CBM, 'o' for VBM and 'a' for all
-CoreMON = 3  # number of FMOs of cores
-LinkMON = 1  # number of FMOs of links
-if (MOMode == 'u' or MOMode == 'o'):
-    CoreTMON = CoreMON * CoreNum
-    LinkTMON = LinkMON * LinkNum
-else:
-    CoreTMON = CoreMON * CoreNum * 2
-    LinkTMON = LinkMON * LinkNum * 2
+MOMode = 'o'  # 'u' for CBM, 'o' for VBM
+CoreMON = 6  # number of FMOs of cores
+LinkMON = 8  # number of FMOs of links
+CoreTMON = CoreMON * CoreNum
+LinkTMON = LinkMON * LinkNum
 TMON = CoreTMON + LinkTMON
 
 # indices of FMOs for k-space calculation
@@ -138,27 +139,19 @@ MONIdx = {}
 imon = 0
 for i in np.arange(CoreNum):
     key = '{}{}'.format('c', i)
-    if (MOMode == 'u' or MOMode == 'o'):
-        MONIdx[key] = np.arange(TMON)[imon:imon+CoreMON]
-        imon += CoreMON
-    else:
-        MONIdx[key] = np.arange(TMON)[imon:imon+CoreMON*2]
-        imon += CoreMON * 2
+    MONIdx[key] = np.arange(TMON)[imon:imon+CoreMON]
+    imon += CoreMON
 for i in np.arange(LinkNum):
     key = '{}{}'.format('l', i)
-    if (MOMode == 'u' or MOMode == 'o'):
-        MONIdx[key] = np.arange(TMON)[imon:imon+LinkMON]
-        imon += LinkMON
-    else:
-        MONIdx[key] = np.arange(TMON)[imon:imon+LinkMON*2]
-        imon += LinkMON * 2
+    MONIdx[key] = np.arange(TMON)[imon:imon+LinkMON]
+    imon += LinkMON
 
 # parameters for DoS calculation
 kDoSNum = 15  # sampling of k-space
 sigma = 0.01  # brodening (eV)
 
 # parameters for band structure calculation
-if (os.path.isfile('{}/KPOINTS'.format(WorkDir))):
+if os.path.isfile('{}/KPOINTS'.format(WorkDir)):
     fin = open('{}/KPOINTS'.format(WorkDir))
     fin.readline()
     # sampling of k-path
@@ -169,7 +162,7 @@ if (os.path.isfile('{}/KPOINTS'.format(WorkDir))):
     line = fin.readline()
     while (len(line) != 0):
         data = line.rstrip().split()
-        if (data != ['']):
+        if data != ['']:
             kBegin = np.array(data[:3], dtype=float)
             kEnd = np.array(fin.readline().rstrip().split()[:3], dtype=float)
             fin.readline()
@@ -180,14 +173,15 @@ if (os.path.isfile('{}/KPOINTS'.format(WorkDir))):
     fin.close()
     # high symmetry points
     kHighSymm = np.array(kHighSymm)
-else:
-    kBandNum = 100
-    kHighSymm = np.array([[[0.0, 0.0, 0.0], [0.5, 0.0, 0.0]],
-                          [[0.5, 0.0, 0.0], [1./3., 1./3., 0.0]],
-                          [[1./3., 1./3., 0.0], [0.0, 0.0, 0.0]],
-                          [[0.0, 0.0, 0.0], [0.0, 0.0, 0.5]],
-                          [[0.0, 0.0, 0.5], [0.5, 0.0, 0.5]],
-                          [[0.5, 0.0, 0.5], [1./3., 1./3., 0.5]],
-                          [[1./3., 1./3., 0.5], [0.0, 0.0, 0.5]],
-                          [[0.5, 0.0, 0.5], [0.5, 0.0, 0.0]],
-                          [[1./3., 1./3., 0.0], [1./3., 1./3., 0.5]]], dtype=float)
+#else:
+#    kBandNum = 20
+#    kHighSymm = np.array([[[0.0, 0.0, 0.0], [0.0, 0.5, 0.0]],
+#                          [[0.0, 0.5, 0.0], [0.0, 0.5, 0.5]],
+#                          [[0.0, 0.5, 0.5], [0.0, 0.0, 0.5]],
+#                          [[0.0, 0.0, 0.5], [0.0, 0.0, 0.0]],
+#                          [[0.0, 0.0, 0.0], [-0.5, 0.0, 0.5]],
+#                          [[-0.5, 0.0, 0.5], [-0.5, 0.5, 0.5]],
+#                          [[-0.5, 0.5, 0.5], [0.0, 0.5, 0.0]],
+#                          [[0.0, 0.5, 0.0], [-0.5, 0.5, 0.0]],
+#                          [[-0.5, 0.5, 0.0], [-0.5, 0.0, 0.0]],
+#                          [[-0.5, 0.0, 0.0], [0.0, 0.0, 0.0]]], dtype=float)
